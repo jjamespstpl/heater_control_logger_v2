@@ -228,7 +228,7 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
 	// TODO pin check
 	if(pin == GPIO_PIN_4) {
 		/* zero crossing detection */
-		lastime = TIM16->CNT;
+//		lastime = TIM16->CNT;
 		triac_timer = 0;
 		triac_timer_flag = 1; /* allow the timer to run */
 		/* keep the TRIACs low before triggering */
@@ -325,6 +325,26 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 			LED_OFF();
 		}
 
+		/*B*/
+		/* If time up, trigger TRIAC */
+		if(triac_mode == MODE_CTRL) {
+			triac_timer = triac_timer_flag ? triac_timer + 0.1 : 0;
+
+			if(triac_timer >= triac_time) {
+				/* trigger TRIAC */
+				triac_timer_flag = 0;
+				TRIAC1_SET(1); /* trigger pulse */
+				TRIAC2_SET(1);
+				for(uint8_t i = 0; i < 80; i++);
+				TRIAC1_SET(0); /* turn it off */
+				TRIAC2_SET(0);
+			}
+		} else {
+			TRIAC1_SET(0); /* trigger TRIAC */
+			TRIAC2_SET(0);
+			triac_time = 0;
+		}
+		/*B*/
 		gsm_rx_timer = gsm_rx_flag ? gsm_rx_timer + 1: 0;
 		if(gsm_rx_timer > gsm_rx_timeout) {
 			gsm_rx_timer = 0;
@@ -558,29 +578,29 @@ int main(void)
 
 		/* update kwh */
 		/*###*/
-		if(lastime-TIM16->CNT > 20) {
-			if(triac_mode == MODE_CTRL) {
-				triac_timer = triac_timer_flag ? triac_timer + 1 : 0;
-
-				if(triac_timer >= triac_time * 100) {
-					/* trigger TRIAC */
-					triac_timer_flag = 0;
-					TRIAC1_SET(1); /* trigger TRIAC */
-					TRIAC2_SET(1);
-					for(uint16_t i = 0; i < 80; i++);
-					TRIAC1_SET(0); /* trigger TRIAC */
-					TRIAC2_SET(0);
-					// if(triac_trigger_timer > TRIAC_TRIGGER_TIME) {
-					//   TRIAC1_SET(0); /* trigger delay */
-					//   TRIAC2_SET(0);
-					// }
-				}
-			} else {
-				TRIAC1_SET(0); /* trigger TRIAC */
-				TRIAC2_SET(0);
-				triac_time = 0;
-			}
-		}
+//		if(lastime-TIM16->CNT > 20) {
+//			if(triac_mode == MODE_CTRL) {
+//				triac_timer = triac_timer_flag ? triac_timer + 1 : 0;
+//
+//				if(triac_timer >= triac_time * 100) {
+//					/* trigger TRIAC */
+//					triac_timer_flag = 0;
+//					TRIAC1_SET(1); /* trigger TRIAC */
+//					TRIAC2_SET(1);
+//					for(uint16_t i = 0; i < 80; i++);
+//					TRIAC1_SET(0); /* trigger TRIAC */
+//					TRIAC2_SET(0);
+//					// if(triac_trigger_timer > TRIAC_TRIGGER_TIME) {
+//					//   TRIAC1_SET(0); /* trigger delay */
+//					//   TRIAC2_SET(0);
+//					// }
+//				}
+//			} else {
+//				TRIAC1_SET(0); /* trigger TRIAC */
+//				TRIAC2_SET(0);
+//				triac_time = 0;
+//			}
+//		}
 
 //		if(kwh_update_flag == 1) {
 //			/* reading ACS37800 */
