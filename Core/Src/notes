@@ -1,0 +1,6 @@
+- how to trigger TRIAC
+- how to check:
+    - ZCD interrupt being called?
+    - Temperature being checked
+    - TRIAC on and off code
+        Settable TRIAC on an

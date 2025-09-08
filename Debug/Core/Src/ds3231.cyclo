@@ -1,0 +1,12 @@
+../Core/Src/ds3231.c:19:6:ds3231_settime	1
+../Core/Src/ds3231.c:32:6:ds3231_gettime	1
+../Core/Src/ds3231.c:44:7:ds3231_gettemp	1
+../Core/Src/ds3231.c:56:6:_ds3231_setreg	1
+../Core/Src/ds3231.c:66:9:_ds3231_getreg	1
+../Core/Src/ds3231.c:73:9:ds3231_setalarm1	7
+../Core/Src/ds3231.c:119:9:ds3231_clearalarm1	1
+../Core/Src/ds3231.c:136:6:ds3231_clearflagalarm1	2
+../Core/Src/ds3231.c:145:6:alarmcheck	1
+../Core/Src/ds3231.c:158:5:_bcd_to_dec	1
+../Core/Src/ds3231.c:167:9:_dec_to_bcd	1
+../Core/Src/ds3231.c:171:6:force_temp_conv	2

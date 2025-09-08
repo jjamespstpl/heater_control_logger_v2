@@ -1,0 +1,2 @@
+../Core/Src/temp.c:10:6:sensor_rx_disable	1
+../Core/Src/temp.c:19:6:sensor_rx_select	8
