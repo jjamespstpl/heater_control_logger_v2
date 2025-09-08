@@ -494,7 +494,7 @@ int main(void)
 	adc_raw[0] = 0;
 	adc_raw[1] = 0;
 	adc_raw[2] = 0;
-	HAL_ADC_Start_DMA(&hadc1, adc_raw, 3);
+//	HAL_ADC_Start_DMA(&hadc1, adc_raw, 3); /*A*/
 	/* GSM stuff */
 	char content_string[200] = "";
 	char api_key[20] = "07AFUS2QQTX0QLDF"; /* key for production */
@@ -533,24 +533,28 @@ int main(void)
 	ti.hr = 21;
 	ti.min = 14;
 	ti.sec = 0;
-	ds3231_settime(&ti);
-	ds3231_gettime(&time);
 
-	ds3231_clearalarm1();
-	//DS3231_SetAlarm1(ALARM_MODE_ONCE_PER_SECOND, 0, 0, 0, 0);
-	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
-	alarmcheck();
-
-	uint16_t ee_data = 0;
-
-	eeprom_write(1, 9);
-	ee_data = eeprom_read(1);
+	/*A*/
+//	ds3231_settime(&ti);
+//	ds3231_gettime(&time);
+//
+//	ds3231_clearalarm1();
+//	//DS3231_SetAlarm1(ALARM_MODE_ONCE_PER_SECOND, 0, 0, 0, 0);
+//	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
+//	alarmcheck();
+//
+//	uint16_t ee_data = 0;
+//
+//	eeprom_write(1, 9);
+//	ee_data = eeprom_read(1);
+	/*A*/
 
 	while (1)
 	{
 
-		ds3231_clearflagalarm1(); /* clear alarm flag */
-
+	/*A*/
+//		ds3231_clearflagalarm1(); /* clear alarm flag */
+	/*A*/
 
 		/* update kwh */
 		/*###*/
@@ -604,23 +608,24 @@ int main(void)
 		/* routines */
 
 		/*### Sensor read ###*/
-		if(sensor_refresh_flag == 1) {
-			sensor_rx_select(sensor_idx);
-//			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
-			sensor_rx_disable(); // Disables all IC comms
-			temp_state = (((sdo[0] | (sdo[1] << 8)) >> 2) & 0x0001);
-			temp_word = (sdo[0] | sdo[1] << 8);
-			temp12b = (temp_word & 0b111111111111000) >> 3;
-			/* store the temp */
-			if(temp_state == 1) {
-				temperatures[sensor_idx - 1] = -99;
-			}
-			else {
-				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
-			}
-			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
-			sensor_refresh_flag = 0;
-		}
+	/*A*/
+//		if(sensor_refresh_flag == 1) {
+//			sensor_rx_select(sensor_idx);
+////			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
+//			sensor_rx_disable(); // Disables all IC comms
+//			temp_state = (((sdo[0] | (sdo[1] << 8)) >> 2) & 0x0001);
+//			temp_word = (sdo[0] | sdo[1] << 8);
+//			temp12b = (temp_word & 0b111111111111000) >> 3;
+//			/* store the temp */
+//			if(temp_state == 1) {
+//				temperatures[sensor_idx - 1] = -99;
+//			}
+//			else {
+//				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
+//			}
+//			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
+//			sensor_refresh_flag = 0;
+//		}
 		//	/* read two sensors, average it if both are working */
 		//	if(temperatures[0] != -99 && temperatures[1] != -99) {
 		//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
@@ -691,154 +696,96 @@ int main(void)
 			TRIAC1_SET(0);
 			TRIAC2_SET(0);
 		}
+
+		/*A*/
 		/* GSM stuff */
 		/*########################################################################*/
-		if(gsm_status != GSM_WAIT) {
-			if(upload_running) {
-				if(gsm_status == GSM_OK || gsm_status == GSM_NOK) {
-					if(gsm_cmd_step >= GSM_CMD_LAST_IDX) {
-						upload_flag = 1; /* successful upload */
-						led_blink();
-						gsm_cmd_step = 0; /* prep for next upload */
-						upload_running = 0; /* wait for next time slot */
-					}
-					else
-						gsm_cmd_step += 1;
-				}
-//				else if(gsm_status == GSM_NOK) {
-//					gsm_cmd_step = 0;
-//					upload_running = 0; /* cancel upload seq */
+//		if(gsm_status != GSM_WAIT) {
+//			if(upload_running) {
+//				if(gsm_status == GSM_OK || gsm_status == GSM_NOK) {
+//					if(gsm_cmd_step >= GSM_CMD_LAST_IDX) {
+//						upload_flag = 1; /* successful upload */
+//						led_blink();
+//						gsm_cmd_step = 0; /* prep for next upload */
+//						upload_running = 0; /* wait for next time slot */
+//					}
+//					else
+//						gsm_cmd_step += 1;
 //				}
-				switch(gsm_cmd_step) {
-				case 0:
-					break;
-				case 1:
-					gsm_cmd("AT+NETCLOSE","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 2:
-					gsm_cmd("AT+CCHMODE=1","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 3:
-					gsm_cmd("AT+CCHSET=1","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 4:
-					gsm_cmd("AT+CCHSTART","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 5:
-					gsm_cmd("AT+CCHSSLCFG=0,0","OK",GSM_WAIT_TIME_LOW);
-					break;
-				case 6:
-					gsm_cmd("AT+CSOCKSETPN=1","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 7:
-					gsm_cmd("AT+CIPMODE=0","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 8:
-					gsm_cmd("AT+NETOPEN","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 9:
-					gsm_cmd("AT+CGATT=1","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 10:
-					gsm_cmd("AT+CGACT=1,1","OK", GSM_WAIT_TIME_LOW);
-					break;
-				case 11:
-					gsm_cmd("AT+IPADDR","OK", GSM_WAIT_TIME_MED);
-					break;
-				case 12:
-					gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","CONNECT 115200", GSM_WAIT_TIME_MED);
-					break;
-				case 13:
-					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%d&field6=%d\r\n" \
-							"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
-							api_key, (int)temperatures[0], (int)temperatures[1], (int)mode, \
-							(float)adc_arr[CUR], (int)adc_arr[VOLT], kwh);
-					/* to upload:
-					 * cur
-					 * vol
-					 * kwh
-					 * temp 1
-					 * temp 2
-					 *
-					 */
-					gsm_cmd(content_string, "200 OK", GSM_WAIT_TIME_MED);
-					break;
-				case 14:
-					gsm_cmd("AT+CIPCLOSE=0", "OK", GSM_WAIT_TIME_LOW);
-					break;
-				default:
-				}
-			}
-			else gsm_cmd_step = 0;
-		}
-		if(sec % 30 == 0 && sec != 0) {
-			if(upload_running == 0 && upload_flag == 0) { /* upload flag indicates if an */
-				upload_running = 1; /* start uploading */
-				gsm_cmd_step = 0; /* with the first command */
-			}
-		} else upload_flag = 0;
+////				else if(gsm_status == GSM_NOK) {
+////					gsm_cmd_step = 0;
+////					upload_running = 0; /* cancel upload seq */
+////				}
+//				switch(gsm_cmd_step) {
+//				case 0:
+//					break;
+//				case 1:
+//					gsm_cmd("AT+NETCLOSE","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 2:
+//					gsm_cmd("AT+CCHMODE=1","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 3:
+//					gsm_cmd("AT+CCHSET=1","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 4:
+//					gsm_cmd("AT+CCHSTART","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 5:
+//					gsm_cmd("AT+CCHSSLCFG=0,0","OK",GSM_WAIT_TIME_LOW);
+//					break;
+//				case 6:
+//					gsm_cmd("AT+CSOCKSETPN=1","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 7:
+//					gsm_cmd("AT+CIPMODE=0","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 8:
+//					gsm_cmd("AT+NETOPEN","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 9:
+//					gsm_cmd("AT+CGATT=1","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 10:
+//					gsm_cmd("AT+CGACT=1,1","OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				case 11:
+//					gsm_cmd("AT+IPADDR","OK", GSM_WAIT_TIME_MED);
+//					break;
+//				case 12:
+//					gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","CONNECT 115200", GSM_WAIT_TIME_MED);
+//					break;
+//				case 13:
+//					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%d&field6=%d\r\n" \
+//							"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
+//							api_key, (int)temperatures[0], (int)temperatures[1], (int)mode, \
+//							(float)adc_arr[CUR], (int)adc_arr[VOLT], kwh);
+//					/* to upload:
+//					 * cur
+//					 * vol
+//					 * kwh
+//					 * temp 1
+//					 * temp 2
+//					 *
+//					 */
+//					gsm_cmd(content_string, "200 OK", GSM_WAIT_TIME_MED);
+//					break;
+//				case 14:
+//					gsm_cmd("AT+CIPCLOSE=0", "OK", GSM_WAIT_TIME_LOW);
+//					break;
+//				default:
+//				}
+//			}
+//			else gsm_cmd_step = 0;
+//		}
+//		if(sec % 30 == 0 && sec != 0) {
+//			if(upload_running == 0 && upload_flag == 0) { /* upload flag indicates if an */
+//				upload_running = 1; /* start uploading */
+//				gsm_cmd_step = 0; /* with the first command */
+//			}
+//		} else upload_flag = 0;
 
 		/*########################################################################*/
-
-////		if(sec != 0 && min % 10 == 0) {
-//			if(upload_flag == 0) { /* every time you hit the 30th sec */
-//				/* uploading here */
-//				upload_running = 1;
-//				gsm_cmd("AT+NETCLOSE","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CCHMODE=1","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CCHSET=1","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CCHSTART","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CCHSSLCFG=0,0","OK",GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CSOCKSETPN=1","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CIPMODE=0","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+NETOPEN","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CGATT=1","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CGACT=1,1","OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+IPADDR","OK", GSM_WAIT_TIME_MED);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","OK", GSM_WAIT_TIME_MED);
-//				while(gsm_status == GSM_WAIT);
-//
-//				sprintf(content_string, "GET /update?api_key=%s&field1=%d\r\n" \
-//						"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
-//						api_key, (int)temperatures[0]);
-//
-////				sprintf(content_string, "AT+HTTPPARA=\"URL\",\"https://api.thingspeak.com/update?api_key=%s&field1=%d\"", \
-////						api_key, (int)temperatures[0]);
-////				gsm_cmd("AT+HTTPINIT", "OK", 2000);
-////				while(gsm_status == GSM_WAIT);
-//				gsm_cmd(content_string, "HTTP/1.1 OK", GSM_WAIT_TIME_MED);
-//				while(gsm_status == GSM_WAIT);
-//				gsm_cmd("AT+CIPCLOSE=0", "OK", GSM_WAIT_TIME_LOW);
-//				while(gsm_status == GSM_WAIT);
-//
-//				HAL_GPIO_WritePin(UP_LED_GPIO_Port, UP_LED_Pin, GPIO_PIN_SET);
-//				HAL_Delay(200);
-//				HAL_GPIO_WritePin(UP_LED_GPIO_Port, UP_LED_Pin, GPIO_PIN_RESET);
-//
-//				upload_flag = 1;
-//			}
-////		}
-////		else
-////			upload_flag = 0;
-//		if(upload_running) {
-//			switch(gsm_step) {
-//			case 0:
-//			}
-//
-//		}
-
-
 	}
     /* USER CODE END WHILE */
 
