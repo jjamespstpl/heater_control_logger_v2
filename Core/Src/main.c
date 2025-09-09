@@ -335,7 +335,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 				triac_timer_flag = 0;
 				TRIAC1_SET(1); /* trigger pulse */
 				TRIAC2_SET(1);
-				for(uint8_t i = 0; i < 80; i++);
+				for(uint8_t i = 0; i < 100; i++);
 				TRIAC1_SET(0); /* turn it off */
 				TRIAC2_SET(0);
 			}
