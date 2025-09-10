@@ -514,16 +514,16 @@ int main(void)
 	// "01VH0OM4JU4KG9KN"; // API key
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
-	HAL_Delay(2000);
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
-	HAL_Delay(200);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-	HAL_Delay(200);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-	HAL_Delay(700);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-	HAL_Delay(8000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(2000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
+//	HAL_Delay(200);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+//	HAL_Delay(200);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(700);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+//	HAL_Delay(8000);
 	uint8_t prev_idx = 1;
 
 	/* key variables */
@@ -552,6 +552,7 @@ int main(void)
 //
 //	ds3231_clearalarm1();
 //	//DS3231_SetAlarm1(ALARM_MODE_ONCE_PER_SECOND, 0, 0, 0, 0);
+	ds3231_clearflagalarm1(); /* clear alarm flag */
 	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
 //	alarmcheck();
 	/*A*/
