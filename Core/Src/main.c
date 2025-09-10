@@ -310,12 +310,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 				sec = 0;
 			} else sec++;
 			ms = 0;
+			vi_update_flag = 1;
 			/*###*/
 		} else ms++;
 
 		if(ms % 5000 == 0)
 			sensor_refresh_flag = 1;
-		vi_update_flag = 1;
 		btn1_timer = btn1_flag ? btn1_timer + 1: 0;
 		btn2_timer = btn2_flag ? btn2_timer + 1: 0;
 		btn3_timer = btn3_flag ? btn3_timer + 1: 0;
@@ -366,7 +366,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 /* EEPROM */
 #define EEPROM_I2C &hi2c1
 // EEPROM ADDRESS (8bits)
-#define EEPROM_ADDR 0xAE
+#define EEPROM_ADDR 0xA
 
 // Define the Page Size and number of pages
 #define PAGE_SIZE 16     // in Bytes
@@ -562,11 +562,6 @@ int main(void)
 //	//DS3231_SetAlarm1(ALARM_MODE_ONCE_PER_SECOND, 0, 0, 0, 0);
 //	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
 //	alarmcheck();
-//
-//	uint16_t ee_data = 0;
-//
-//	eeprom_write(1, 9);
-//	ee_data = eeprom_read(1);
 	/*A*/
 
 	while (1)
@@ -602,28 +597,28 @@ int main(void)
 //			}
 //		}
 
-//		if(kwh_update_flag == 1) {
-//			/* reading ACS37800 */
-//			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_PACTAVGONEMIN, I2C_MEMADD_SIZE_8BIT, acs37800_p_buffer, 4, 100);
-//			pavg = ((acs37800_p_buffer[1] << 8) & 0xF0) | acs37800_p_buffer[0];
-//			kwh = kwh + pavg * (1/60);
-//			/* TODO update kwh in EEPROM */
-//			kwh_update_flag = 0; /* wait till next min */
-//		}
-//		if(vi_update_flag == 1) {
-//			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_VIRMS, I2C_MEMADD_SIZE_8BIT, acs37800_vi_buffer, 4, 100);
-//			uint16_t vrms_raw = (acs37800_vi_buffer[1] << 8) | acs37800_vi_buffer[0];
-//			if (vrms_raw > (65536/2)) {
-//				vrms_final = ((vrms_raw - (65536/2)) / (float)65536.0f) * 0.84;
-//				vrms_final = vrms_final / 0.0008243;
-//			} else vrms_final = 0;
-//			uint16_t irms_raw = (acs37800_vi_buffer[3] << 8) | acs37800_vi_buffer[2];
-//			if (irms_raw > (65536/2)) {
-//				irms_final = ((irms_raw - (65536/2)) / (float)65536.0f) * 0.84;
-//				irms_final = irms_final / 0.0008243;
-//			} else irms_final = 0;
-//			vi_update_flag = 0; /* wait till next sec */
-//		}
+		if(kwh_update_flag == 1) {
+			/* reading ACS37800 */
+			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_PACTAVGONEMIN, I2C_MEMADD_SIZE_8BIT, acs37800_p_buffer, 4, 100);
+			pavg = ((acs37800_p_buffer[1] << 8) & 0xF0) | acs37800_p_buffer[0];
+			kwh = kwh + pavg * (1/60);
+			/* TODO update kwh in EEPROM */
+			kwh_update_flag = 0; /* wait till next min */
+		}
+		if(vi_update_flag == 1) {
+			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_VIRMS, I2C_MEMADD_SIZE_8BIT, acs37800_vi_buffer, 4, 100);
+			uint16_t vrms_raw = (acs37800_vi_buffer[1] << 8) | acs37800_vi_buffer[0];
+			if (vrms_raw > (65536/2)) {
+				vrms_final = ((vrms_raw - (65536/2)) / (float)65536.0f) * 0.84 * 1.19;
+				vrms_final = vrms_final / 0.0008243;
+			} else vrms_final = 0;
+			uint16_t irms_raw = (acs37800_vi_buffer[3] << 8) | acs37800_vi_buffer[2];
+			if (irms_raw > (65536/2)) {
+				irms_final = ((irms_raw - (65536/2)) / (float)65536.0f) * 0.84 * 1.19;
+				irms_final = irms_final / 0.0008243;
+			} else irms_final = 0;
+			vi_update_flag = 0; /* wait till next sec */
+		}
 		/*###*/
 		/* routines */
 
