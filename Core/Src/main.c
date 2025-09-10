@@ -49,6 +49,7 @@
 #define ACS37800_REG_VIRMS				(0x20) /* IRMSAVGONESEC / VRMSAVGONESEC */
 #define ACS37800_REG_PACTAVGONEMIN		(0x29) /* LSW */
 #define ACS37800_REG_SLADDR				(0x0F) /* LSW */
+#define ACS37800_CURR_SENS_RANGE		(30) /* ACS37800KMACTR-030B3-I2C is a 30.0A part */
 
 uint8_t acs37800_vi_buffer[4];
 uint8_t acs37800_p_buffer[4];
@@ -608,15 +609,15 @@ int main(void)
 		if(vi_update_flag == 1) {
 			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_VIRMS, I2C_MEMADD_SIZE_8BIT, acs37800_vi_buffer, 4, 100);
 			uint16_t vrms_raw = (acs37800_vi_buffer[1] << 8) | acs37800_vi_buffer[0];
-			if (vrms_raw > (65536/2)) {
-				vrms_final = ((vrms_raw - (65536/2)) / (float)65536.0f) * 0.84 * 1.19;
-				vrms_final = vrms_final / 0.0008243;
-			} else vrms_final = 0;
+			vrms_final = vrms_raw / (float)55000;
+			vrms_final = vrms_final * 250;
+			vrms_final = vrms_final / 1000;
+			vrms_final = vrms_final / 0.0008243;
 			uint16_t irms_raw = (acs37800_vi_buffer[3] << 8) | acs37800_vi_buffer[2];
-			if (irms_raw > (65536/2)) {
-				irms_final = ((irms_raw - (65536/2)) / (float)65536.0f) * 0.84 * 1.19;
-				irms_final = irms_final / 0.0008243;
-			} else irms_final = 0;
+			irms_final = irms_raw / (float)55000;
+			irms_final = irms_final * ACS37800_CURR_SENS_RANGE;
+			if(irms_final < 0.050)
+				irms_final = 0;
 			vi_update_flag = 0; /* wait till next sec */
 		}
 		/*###*/
