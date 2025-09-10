@@ -76,10 +76,6 @@ void Error_Handler(void);
 #define GSM_RX_GPIO_Port GPIOB
 #define CS_TC2_Pin GPIO_PIN_12
 #define CS_TC2_GPIO_Port GPIOB
-#define CS_TC3_Pin GPIO_PIN_13
-#define CS_TC3_GPIO_Port GPIOB
-#define CS_TC4_Pin GPIO_PIN_14
-#define CS_TC4_GPIO_Port GPIOB
 #define CS_TC5_Pin GPIO_PIN_15
 #define CS_TC5_GPIO_Port GPIOB
 #define CS_TC6_Pin GPIO_PIN_8

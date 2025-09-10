@@ -313,7 +313,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 			} else sec++;
 			ms = 0;
 			vi_update_flag = 1;
-			kwh_update_flag = 1;
 			/*###*/
 		} else ms++;
 
@@ -444,15 +443,6 @@ uint8_t eeprom_read(uint16_t idx) {
 	HAL_I2C_Mem_Read(EEPROM_I2C, EEPROM_ADDR, 0, I2C_MEMADD_SIZE_8BIT, &data, 1, 1000);  // write the data to the EEPROM
 	return data;
 }
-void kwh_update() {
-	LED_ON();
-	float kwh_saved = 0;
-	if(adc_arr[CUR] > 0.1) {
-//		kwh_saved = eeprom_read(EEPROM_KWH_MEM_ADDR);
-		kwh = (kwh/100) + (adc_arr[VOLT] * adc_arr[CUR] * (1/(float)600));
-//		eeprom_write(EEPROM_KWH_MEM_ADDR, kwh*100);
-	}
-}
 
 
 /* USER CODE END 0 */
@@ -524,17 +514,16 @@ int main(void)
 	// "01VH0OM4JU4KG9KN"; // API key
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
-//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
-//	HAL_Delay(2000);
-//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
-//	HAL_Delay(200);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-//	HAL_Delay(200);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-//	HAL_Delay(700);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-//	HAL_Delay(15000);
-//
+	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
+	HAL_Delay(2000);
+	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
+	HAL_Delay(200);
+	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+	HAL_Delay(200);
+	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+	HAL_Delay(700);
+	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+	HAL_Delay(8000);
 	uint8_t prev_idx = 1;
 
 	/* key variables */
@@ -636,23 +625,23 @@ int main(void)
 
 		/*### Sensor read ###*/
 	/*A*/
-//		if(sensor_refresh_flag == 1) {
-//			sensor_rx_select(sensor_idx);
-////			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
-//			sensor_rx_disable(); // Disables all IC comms
-//			temp_state = (((sdo[0] | (sdo[1] << 8)) >> 2) & 0x0001);
-//			temp_word = (sdo[0] | sdo[1] << 8);
-//			temp12b = (temp_word & 0b111111111111000) >> 3;
-//			/* store the temp */
-//			if(temp_state == 1) {
-//				temperatures[sensor_idx - 1] = -99;
-//			}
-//			else {
-//				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
-//			}
-//			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
-//			sensor_refresh_flag = 0;
-//		}
+		if(sensor_refresh_flag == 1) {
+			sensor_rx_select(sensor_idx);
+			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
+			sensor_rx_disable(); // Disables all IC comms
+			temp_state = (((sdo[0] | (sdo[1] << 8)) >> 2) & 0x0001);
+			temp_word = (sdo[0] | sdo[1] << 8);
+			temp12b = (temp_word & 0b111111111111000) >> 3;
+			/* store the temp */
+			if(temp_state == 1) {
+				temperatures[sensor_idx - 1] = -99;
+			}
+			else {
+				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
+			}
+			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
+			sensor_refresh_flag = 0;
+		}
 		//	/* read two sensors, average it if both are working */
 		//	if(temperatures[0] != -99 && temperatures[1] != -99) {
 		//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
@@ -690,21 +679,21 @@ int main(void)
 			if(BTN1_READ() == 0) {
 				if(BTN1_READ() == 0) {
 					mode = 1;
-					triac_time = 6.5; /* 130V */
+					triac_time = 4.5; /* 130V */
 					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 				}
 			}
 			else if(BTN2_READ() == 0) {
 				if(BTN2_READ() == 0) {
 					mode = 2;
-					triac_time = 5.5; /* 170V */
+					triac_time = 3.37; /* 170V */
 					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 				}
 			}
 			else if(BTN3_READ() == 0) {
 				if(BTN3_READ() == 0) {
 					mode = 3;
-					triac_time = 4; /* 205V */
+					triac_time = 2.4; /* 205V */
 					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 				}
 			}
@@ -727,90 +716,90 @@ int main(void)
 		/*A*/
 		/* GSM stuff */
 		/*########################################################################*/
-//		if(gsm_status != GSM_WAIT) {
-//			if(upload_running) {
-//				if(gsm_status == GSM_OK || gsm_status == GSM_NOK) {
-//					if(gsm_cmd_step >= GSM_CMD_LAST_IDX) {
-//						upload_flag = 1; /* successful upload */
-//						led_blink();
-//						gsm_cmd_step = 0; /* prep for next upload */
-//						upload_running = 0; /* wait for next time slot */
-//					}
-//					else
-//						gsm_cmd_step += 1;
+		if(gsm_status != GSM_WAIT) {
+			if(upload_running) {
+				if(gsm_status == GSM_OK || gsm_status == GSM_NOK) {
+					if(gsm_cmd_step >= GSM_CMD_LAST_IDX) {
+						upload_flag = 1; /* successful upload */
+						led_blink();
+						gsm_cmd_step = 0; /* prep for next upload */
+						upload_running = 0; /* wait for next time slot */
+					}
+					else
+						gsm_cmd_step += 1;
+				}
+//				else if(gsm_status == GSM_NOK) {
+//					gsm_cmd_step = 0;
+//					upload_running = 0; /* cancel upload seq */
 //				}
-////				else if(gsm_status == GSM_NOK) {
-////					gsm_cmd_step = 0;
-////					upload_running = 0; /* cancel upload seq */
-////				}
-//				switch(gsm_cmd_step) {
-//				case 0:
-//					break;
-//				case 1:
-//					gsm_cmd("AT+NETCLOSE","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 2:
-//					gsm_cmd("AT+CCHMODE=1","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 3:
-//					gsm_cmd("AT+CCHSET=1","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 4:
-//					gsm_cmd("AT+CCHSTART","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 5:
-//					gsm_cmd("AT+CCHSSLCFG=0,0","OK",GSM_WAIT_TIME_LOW);
-//					break;
-//				case 6:
-//					gsm_cmd("AT+CSOCKSETPN=1","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 7:
-//					gsm_cmd("AT+CIPMODE=0","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 8:
-//					gsm_cmd("AT+NETOPEN","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 9:
-//					gsm_cmd("AT+CGATT=1","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 10:
-//					gsm_cmd("AT+CGACT=1,1","OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				case 11:
-//					gsm_cmd("AT+IPADDR","OK", GSM_WAIT_TIME_MED);
-//					break;
-//				case 12:
-//					gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","CONNECT 115200", GSM_WAIT_TIME_MED);
-//					break;
-//				case 13:
-//					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%d&field6=%d\r\n" \
-//							"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
-//							api_key, (int)temperatures[0], (int)temperatures[1], (int)mode, \
-//							(float)adc_arr[CUR], (int)adc_arr[VOLT], kwh);
-//					/* to upload:
-//					 * cur
-//					 * vol
-//					 * kwh
-//					 * temp 1
-//					 * temp 2
-//					 *
-//					 */
-//					gsm_cmd(content_string, "200 OK", GSM_WAIT_TIME_MED);
-//					break;
-//				case 14:
-//					gsm_cmd("AT+CIPCLOSE=0", "OK", GSM_WAIT_TIME_LOW);
-//					break;
-//				default:
-//				}
-//			}
-//			else gsm_cmd_step = 0;
-//		}
-//		if(sec % 30 == 0 && sec != 0) {
-//			if(upload_running == 0 && upload_flag == 0) { /* upload flag indicates if an */
-//				upload_running = 1; /* start uploading */
-//				gsm_cmd_step = 0; /* with the first command */
-//			}
-//		} else upload_flag = 0;
+				switch(gsm_cmd_step) {
+				case 0:
+					break;
+				case 1:
+					gsm_cmd("AT+NETCLOSE","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 2:
+					gsm_cmd("AT+CCHMODE=1","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 3:
+					gsm_cmd("AT+CCHSET=1","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 4:
+					gsm_cmd("AT+CCHSTART","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 5:
+					gsm_cmd("AT+CCHSSLCFG=0,0","OK",GSM_WAIT_TIME_LOW);
+					break;
+				case 6:
+					gsm_cmd("AT+CSOCKSETPN=1","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 7:
+					gsm_cmd("AT+CIPMODE=0","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 8:
+					gsm_cmd("AT+NETOPEN","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 9:
+					gsm_cmd("AT+CGATT=1","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 10:
+					gsm_cmd("AT+CGACT=1,1","OK", GSM_WAIT_TIME_LOW);
+					break;
+				case 11:
+					gsm_cmd("AT+IPADDR","OK", GSM_WAIT_TIME_MED);
+					break;
+				case 12:
+					gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","CONNECT 115200", GSM_WAIT_TIME_MED);
+					break;
+				case 13:
+					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%d&field6=%d\r\n" \
+							"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
+							api_key, (int)temperatures[0], (int)temperatures[1], (int)mode, \
+							(float)irms_final, (int)vrms_final, kwh);
+					/* to upload:
+					 * cur
+					 * vol
+					 * kwh
+					 * temp 1
+					 * temp 2
+					 *
+					 */
+					gsm_cmd(content_string, "200 OK", GSM_WAIT_TIME_MED);
+					break;
+				case 14:
+					gsm_cmd("AT+CIPCLOSE=0", "OK", GSM_WAIT_TIME_LOW);
+					break;
+				default:
+				}
+			}
+			else gsm_cmd_step = 0;
+		}
+		if(sec % 30 == 0 && sec != 0) {
+			if(upload_running == 0 && upload_flag == 0) { /* upload flag indicates if an */
+				upload_running = 1; /* start uploading */
+				gsm_cmd_step = 0; /* with the first command */
+			}
+		} else upload_flag = 0;
 
 		/*########################################################################*/
 	}
@@ -1191,7 +1180,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, CS_TC2_Pin|CS_TC3_Pin|CS_TC4_Pin|CS_TC5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, CS_TC2_Pin|CS_TC5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
@@ -1223,8 +1212,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : CS_TC2_Pin CS_TC3_Pin CS_TC4_Pin CS_TC5_Pin */
-  GPIO_InitStruct.Pin = CS_TC2_Pin|CS_TC3_Pin|CS_TC4_Pin|CS_TC5_Pin;
+  /*Configure GPIO pins : CS_TC2_Pin CS_TC5_Pin */
+  GPIO_InitStruct.Pin = CS_TC2_Pin|CS_TC5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
