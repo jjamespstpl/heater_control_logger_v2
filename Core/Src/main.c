@@ -368,65 +368,65 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 // EEPROM ADDRESS (8bits)
 #define EEPROM_ADDR 0xAE
 
-//// Define the Page Size and number of pages
-//#define PAGE_SIZE 16     // in Bytes
-//#define PAGE_NUM  32    // number of pages
+// Define the Page Size and number of pages
+#define PAGE_SIZE 16     // in Bytes
+#define PAGE_NUM  32    // number of pages
+
+void EEPROM_Write(uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
+{
+
+	// Find out the number of bit, where the page addressing starts
+	int paddrposition = log(PAGE_SIZE)/log(2);
+
+	// calculate the start page and the end page
+	uint16_t startPage = page;
+	uint16_t endPage = page + ((size+offset)/PAGE_SIZE);
+
+	// number of pages to be written
+	uint16_t numofpages = (endPage-startPage) + 1;
+	uint16_t pos=0;
+
+	// write the data
+	for (int i=0; i<numofpages; i++)
+	{
+		/* calculate the address of the memory location
+		 * Here we add the page address with the byte address
+		 */
+		uint16_t MemAddress = startPage<<paddrposition | offset;
+		uint16_t bytesremaining = 2;
+
+		HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, &data[pos], bytesremaining, 1000);  // write the data to the EEPROM
+
+		startPage += 1;  // increment the page, so that a new page address can be selected for further write
+		offset=0;   // since we will be writing to a new page, so offset will be 0
+		size = size-bytesremaining;  // reduce the size of the bytes
+		pos += bytesremaining;  // update the position for the data buffer
+
+		HAL_Delay (5);  // Write cycle delay (5ms)/*TODO implement using timer: eeprom_busy_flag */
+	}
+}
 //
-//void EEPROM_Write(uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
-//{
-//
-//	// Find out the number of bit, where the page addressing starts
-//	int paddrposition = log(PAGE_SIZE)/log(2);
-//
-//	// calculate the start page and the end page
-//	uint16_t startPage = page;
-//	uint16_t endPage = page + ((size+offset)/PAGE_SIZE);
-//
-//	// number of pages to be written
-//	uint16_t numofpages = (endPage-startPage) + 1;
-//	uint16_t pos=0;
-//
-//	// write the data
-//	for (int i=0; i<numofpages; i++)
-//	{
-//		/* calculate the address of the memory location
-//		 * Here we add the page address with the byte address
-//		 */
-//		uint16_t MemAddress = startPage<<paddrposition | offset;
-//		uint16_t bytesremaining = bytestowrite(size, offset);  // calculate the remaining bytes to be written
-//
-//		HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, &data[pos], bytesremaining, 1000);  // write the data to the EEPROM
-//
-//		startPage += 1;  // increment the page, so that a new page address can be selected for further write
-//		offset=0;   // since we will be writing to a new page, so offset will be 0
-//		size = size-bytesremaining;  // reduce the size of the bytes
-//		pos += bytesremaining;  // update the position for the data buffer
-//
-//		HAL_Delay (5);  // Write cycle delay (5ms)/*TODO implement using timer: eeprom_busy_flag */
-//	}
-//}
-//
-//void EEPROM_Read (uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
-//{
-//	int paddrposition = log(PAGE_SIZE)/log(2);
-//
-//	uint16_t startPage = page;
-//	uint16_t endPage = page + ((size+offset)/PAGE_SIZE);
-//
-//	uint16_t numofpages = (endPage-startPage) + 1;
-//	uint16_t pos=0;
-//
-//	for (int i=0; i<numofpages; i++)
-//	{
-//		uint16_t MemAddress = startPage<<paddrposition | offset;
-//		uint16_t bytesremaining = bytestowrite(size, offset);
-//		HAL_I2C_Mem_Read(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, &data, 2, 1000);
-//		startPage += 1;
-//		offset=0;
-//		size = size-bytesremaining;
-//		pos += bytesremaining;
-//	}
-//}
+void EEPROM_Read (uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
+{
+	int paddrposition = log(PAGE_SIZE)/log(2);
+
+	uint16_t startPage = page;
+	uint16_t endPage = page + ((size+offset)/PAGE_SIZE);
+
+	uint16_t numofpages = (endPage-startPage) + 1;
+	uint16_t pos=0;
+
+	for (int i=0; i<numofpages; i++)
+	{
+		uint16_t MemAddress = startPage<<paddrposition | offset;
+		uint16_t bytesremaining = 2;
+		HAL_I2C_Mem_Read(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, data, 2, 1000);
+		startPage += 1;
+		offset=0;
+		size = size-bytesremaining;
+		pos += bytesremaining;
+	}
+}
 
 
 
@@ -436,8 +436,9 @@ void eeprom_write(uint16_t idx, uint8_t data) {
 	uint8_t buffer[2];
 	buffer[0] = 0x0;
 	buffer[1] = data;
-//	status = HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR ,0, I2C_MEMADD_SIZE_8BIT, &d, 1, HAL_MAX_DELAY);  // write the data to the EEPROM
-    status = HAL_I2C_Master_Transmit(&hi2c1, EEPROM_ADDR, buffer, 2, HAL_MAX_DELAY);
+	status = HAL_I2C_IsDeviceReady(EEPROM_I2C, EEPROM_ADDR, 10, HAL_MAX_DELAY);
+	status = HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR ,0, I2C_MEMADD_SIZE_8BIT, &d, 1, HAL_MAX_DELAY);  // write the data to the EEPROM
+//    status = HAL_I2C_Master_Transmit(&hi2c1, EEPROM_ADDR, buffer, 2, HAL_MAX_DELAY);
 	err = hi2c1.ErrorCode;
 	HAL_Delay(5);
 }
@@ -446,10 +447,16 @@ uint8_t eeprom_read(uint16_t idx) {
 	uint8_t data = 0;
 	uint8_t status, err;
 	/* using "Current Read" */
-	status = HAL_I2C_Master_Transmit(EEPROM_I2C, EEPROM_ADDR, &d, 1, HAL_MAX_DELAY);
-	err = hi2c1.ErrorCode;
-	HAL_I2C_Master_Receive(EEPROM_I2C, EEPROM_ADDR, &data, 1, 1000);  // write the data to the EEPROM
-	err = hi2c1.ErrorCode;
+	for(uint8_t i = 0; i < 128; i++) {
+		d = i;
+		status = HAL_I2C_Master_Transmit(EEPROM_I2C, EEPROM_ADDR, &d, 1, HAL_MAX_DELAY);
+		err = hi2c1.ErrorCode;
+	status = HAL_I2C_IsDeviceReady(EEPROM_I2C, EEPROM_ADDR, 10, HAL_MAX_DELAY);
+	if(status == 0) {
+		HAL_I2C_Master_Receive(EEPROM_I2C, EEPROM_ADDR, &data, 1, 1000);  // write the data to the EEPROM
+		err = hi2c1.ErrorCode;
+	}
+	}
 	return data;
 }
 
@@ -563,6 +570,10 @@ int main(void)
 	ti.hr = 21;
 	ti.min = 14;
 	ti.sec = 0;
+	uint8_t data[] = { 2, 3 };
+	uint8_t rdata[2] = {};
+	EEPROM_Write(0, 0, data, 2);
+	EEPROM_Read(0, 0, rdata, 2);
 
 	/*A*/
 //	ds3231_settime(&ti);
