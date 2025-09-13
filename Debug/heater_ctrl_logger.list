@@ -9519,10 +9519,10 @@ static void MX_USART3_UART_Init(void)
  80046dc:	4b16      	ldr	r3, [pc, #88]	@ (8004738 <MX_USART3_UART_Init+0x60>)
  80046de:	4a17      	ldr	r2, [pc, #92]	@ (800473c <MX_USART3_UART_Init+0x64>)
  80046e0:	601a      	str	r2, [r3, #0]
-  huart3.Init.BaudRate = 9600;
+  huart3.Init.BaudRate = 115200;
  80046e2:	4b15      	ldr	r3, [pc, #84]	@ (8004738 <MX_USART3_UART_Init+0x60>)
- 80046e4:	2296      	movs	r2, #150	@ 0x96
- 80046e6:	0192      	lsls	r2, r2, #6
+ 80046e4:	22e1      	movs	r2, #225	@ 0xe1
+ 80046e6:	0252      	lsls	r2, r2, #9
  80046e8:	605a      	str	r2, [r3, #4]
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
  80046ea:	4b13      	ldr	r3, [pc, #76]	@ (8004738 <MX_USART3_UART_Init+0x60>)
