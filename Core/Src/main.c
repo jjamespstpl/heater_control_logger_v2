@@ -50,6 +50,9 @@
 #define ACS37800_REG_PACTAVGONEMIN		(0x22) /* LSW */
 #define ACS37800_REG_SLADDR				(0x0F) /* LSW */
 #define ACS37800_CURR_SENS_RANGE		(30) /* ACS37800KMACTR-030B3-I2C is a 30.0A part */
+//#define ACS37800_R_RATIO				(0.0008243)
+//#define ACS37800_R_RATIO				(0.000814)
+#define ACS37800_R_RATIO				(0.000885)
 
 uint8_t acs37800_vi_buffer[4];
 uint8_t acs37800_p_buffer[4];
@@ -223,7 +226,7 @@ uint8_t kwh_time_count; /* TODO remove */
 uint8_t kwh_update_flag;
 uint8_t vi_update_flag;
 /*###*/
-#define EEPROM_KWH_MEM_ADDR		0xA
+#define EEPROM_KWH_MEM_ADDR	(0x0)
 
 
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
@@ -539,16 +542,16 @@ int main(void)
 	// "01VH0OM4JU4KG9KN"; // API key
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
-	HAL_Delay(2000);
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
-	HAL_Delay(200);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-	HAL_Delay(200);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-	HAL_Delay(700);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-	HAL_Delay(15000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(2000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
+//	HAL_Delay(200);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+//	HAL_Delay(200);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(700);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+//	HAL_Delay(15000);
 	uint8_t prev_idx = 1;
 
 	/* key variables */
@@ -572,10 +575,10 @@ int main(void)
 	ti.sec = 0;
 	uint8_t data[] = { 2, 3 };
 	uint8_t rdata[2] = {};
-	EEPROM_Write(0, 0, data, 2);
-	EEPROM_Read(0, 0, rdata, 2);
 
-	/*A*/
+//	uint8_t ee_var[] = {0,0,0,0};
+//	EEPROM_Write(0, 0, &ee_var, 4);
+//	/*A*/
 //	ds3231_settime(&ti);
 //	ds3231_gettime(&time);
 //
@@ -585,6 +588,9 @@ int main(void)
 	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
 //	alarmcheck();
 	/*A*/
+	float prms = 0;
+	uint32_t sample = 0;
+
 
 	while (1)
 	{
@@ -620,18 +626,27 @@ int main(void)
 
 		if(kwh_update_flag == 1) {
 			/* reading ACS37800 */
-			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_PACTAVGONEMIN, I2C_MEMADD_SIZE_8BIT, acs37800_p_buffer, 4, 100);
-			uint16_t pavg_raw = (acs37800_p_buffer[1] << 8) | acs37800_p_buffer[0];
-			pavg_final = pavg_raw;
-			float LSBpermW = 3.08; // LSB per mW
-			LSBpermW  *= 30.0 / ACS37800_CURR_SENS_RANGE; // Correct for sensor version
-			pavg_final /= LSBpermW; // Convert from codes to mW
-			//Correct for the voltage divider: (RISO1 + RISO2 + RSENSE) / RSENSE
-			//Or:  (RISO1 + RISO2 + RISO3 + RISO4 + RSENSE) / RSENSE
-			pavg_final /= 0.0008243;
-			pavg_final /= 1000; // Convert from mW to W
+//			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_PACTAVGONEMIN, I2C_MEMADD_SIZE_8BIT, acs37800_p_buffer, 4, 100);
+//			uint16_t pavg_raw = (acs37800_p_buffer[1] << 8) | acs37800_p_buffer[0];
+//			pavg_final = pavg_raw / (float)32768.0f;
+//			pavg_final = pavg_final * 250 * 30;
+////			float LSBpermW = 3.08; // LSB per mW
+////			LSBpermW  *= 30.0 / ACS37800_CURR_SENS_RANGE; // Correct for sensor version
+////			pavg_final /= LSBpermW; // Convert from codes to mW
+//			//Correct for the voltage divider: (RISO1 + RISO2 + RSENSE) / RSENSE
+//			//Or:  (RISO1 + RISO2 + RISO3 + RISO4 + RSENSE) / RSENSE
+//			pavg_final /= ACS37800_R_RATIO;
+//			pavg_final /= 1000; // Convert from mW to W
+			pavg_final = prms/(float)sample;
+			sample = 0;
+			prms = 0;
 
+			uint32_t kwh_save = 0;
+			EEPROM_Read(0, 0, &kwh_save, 4);
+			kwh = kwh_save / (float)1000;
 			kwh = kwh + (pavg_final * (1/(float)60));
+			kwh_save = kwh * 1000;
+			EEPROM_Write(0, 0, &kwh_save, 4);
 			/* TODO update kwh in EEPROM */
 			kwh_update_flag = 0; /* wait till next min */
 			ds3231_clearflagalarm1(); /* clear alarm flag */
@@ -642,10 +657,12 @@ int main(void)
 			vrms_final = vrms_raw / (float)55000;
 			vrms_final = vrms_final * 250;
 			vrms_final = vrms_final / 1000;
-			vrms_final = vrms_final / 0.0008243;
+			vrms_final = vrms_final / ACS37800_R_RATIO;
 			uint16_t irms_raw = (acs37800_vi_buffer[3] << 8) | acs37800_vi_buffer[2];
 			irms_final = irms_raw / (float)55000;
 			irms_final = irms_final * ACS37800_CURR_SENS_RANGE;
+			prms += (vrms_final * irms_final);
+			sample++;
 			if(irms_final < 0.050)
 				irms_final = 0;
 			vi_update_flag = 0; /* wait till next sec */
