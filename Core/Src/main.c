@@ -542,16 +542,16 @@ int main(void)
 	// "01VH0OM4JU4KG9KN"; // API key
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
-//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
-//	HAL_Delay(2000);
-//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
-//	HAL_Delay(200);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-//	HAL_Delay(200);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-//	HAL_Delay(700);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-//	HAL_Delay(15000);
+	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
+	HAL_Delay(2000);
+	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
+	HAL_Delay(200);
+	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+	HAL_Delay(200);
+	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+	HAL_Delay(700);
+	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+	HAL_Delay(15000);
 	uint8_t prev_idx = 1;
 
 	/* key variables */
@@ -590,7 +590,6 @@ int main(void)
 	/*A*/
 	float prms = 0;
 	uint32_t sample = 0;
-
 
 	while (1)
 	{
@@ -638,26 +637,41 @@ int main(void)
 //			pavg_final /= ACS37800_R_RATIO;
 //			pavg_final /= 1000; // Convert from mW to W
 			pavg_final = prms/(float)sample;
-			sample = 0;
-			prms = 0;
 
 			uint32_t kwh_save = 0;
 			EEPROM_Read(0, 0, &kwh_save, 4);
 			kwh = kwh_save / (float)1000;
-			kwh = kwh + (pavg_final * (1/(float)60));
+			kwh = kwh + (pavg_final/(float)(1000*60));
 			kwh_save = kwh * 1000;
 			EEPROM_Write(0, 0, &kwh_save, 4);
-			/* TODO update kwh in EEPROM */
-			kwh_update_flag = 0; /* wait till next min */
+			sample = 0;
+			prms = 0;
 			ds3231_clearflagalarm1(); /* clear alarm flag */
+			kwh_update_flag = 0;
 		}
 		if(vi_update_flag == 1) {
 			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_VIRMS, I2C_MEMADD_SIZE_8BIT, acs37800_vi_buffer, 4, 100);
 			uint16_t vrms_raw = (acs37800_vi_buffer[1] << 8) | acs37800_vi_buffer[0];
 			vrms_final = vrms_raw / (float)55000;
-			vrms_final = vrms_final * 250;
-			vrms_final = vrms_final / 1000;
-			vrms_final = vrms_final / ACS37800_R_RATIO;
+			vrms_final = vrms_final * 280;
+			if(vrms_final > 250) {
+				vrms_final = 240 + ((vrms_final - 246)/0.4);
+//				[0.3, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4]
+			} else if(vrms_final <= 250 && vrms_final > 246) {
+				vrms_final = 240 + ((vrms_final - 246)/0.4);
+			} else if(vrms_final <= 246 && vrms_final > 241) {
+				vrms_final = 230 + ((vrms_final - 241)/0.5);
+			} else if(vrms_final <= 235 && vrms_final > 241) {
+				vrms_final = 220 + ((vrms_final - 235)/0.6);
+			} else if(vrms_final <= 228 && vrms_final > 235) {
+				vrms_final = 210 + ((vrms_final - 228)/0.7);
+			} else if(vrms_final <= 220 && vrms_final > 228) {
+				vrms_final = 200 + ((vrms_final - 220)/0.8);
+			} else if(vrms_final <= 213 && vrms_final > 220) {
+				vrms_final = 190 + ((vrms_final - 220)/0.7);
+			} else {
+				vrms_final = 180 + ((vrms_final - 210)/0.4);
+			}
 			uint16_t irms_raw = (acs37800_vi_buffer[3] << 8) | acs37800_vi_buffer[2];
 			irms_final = irms_raw / (float)55000;
 			irms_final = irms_final * ACS37800_CURR_SENS_RANGE;
@@ -819,7 +833,7 @@ int main(void)
 					gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","CONNECT 115200", GSM_WAIT_TIME_MED);
 					break;
 				case 13:
-					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%d&field6=%d\r\n" \
+					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%d&field6=%.1f\r\n" \
 							"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
 							api_key, (int)temperatures[0], (int)temperatures[1], (int)mode, \
 							(float)irms_final, (int)vrms_final, kwh);
