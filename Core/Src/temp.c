@@ -30,7 +30,7 @@ void sensor_rx_select(uint8_t index) {
 		TEMP1_CS(0);
 		break;
 	case 2:
-		TEMP2_CS(0);
+		TEMP5_CS(0);
 		break;
 	case 3:
 		TEMP3_CS(0);
@@ -39,7 +39,7 @@ void sensor_rx_select(uint8_t index) {
 		TEMP4_CS(0);
 		break;
 	case 5:
-		TEMP5_CS(0);
+		TEMP2_CS(0);
 		break;
 	case 6:
 		TEMP6_CS(0);

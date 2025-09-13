@@ -84,6 +84,8 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim16;
 
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart3_rx;
+DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 uint32_t baudRate;
@@ -359,18 +361,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 			gsm_tx_busy = 0; /* ...to read data again */
 			gsm_rx_busy = 0;
 		}
-
-
 	}
 }
 /* EEPROM */
 #define EEPROM_I2C &hi2c1
 // EEPROM ADDRESS (8bits)
-#define EEPROM_ADDR 0xA
+#define EEPROM_ADDR 0xAE
 
-// Define the Page Size and number of pages
-#define PAGE_SIZE 16     // in Bytes
-#define PAGE_NUM  32    // number of pages
+//// Define the Page Size and number of pages
+//#define PAGE_SIZE 16     // in Bytes
+//#define PAGE_NUM  32    // number of pages
 //
 //void EEPROM_Write(uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
 //{
@@ -432,13 +432,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 
 void eeprom_write(uint16_t idx, uint8_t data) {
 	uint8_t d = data;
-	uint8_t status = 0;
-	status = HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR , 0, I2C_MEMADD_SIZE_8BIT, &d, 1, HAL_MAX_DELAY);  // write the data to the EEPROM
+	uint8_t status, err;
+	uint8_t buffer[2];
+	buffer[0] = 0x0;
+	buffer[1] = data;
+//	status = HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR ,0, I2C_MEMADD_SIZE_8BIT, &d, 1, HAL_MAX_DELAY);  // write the data to the EEPROM
+    status = HAL_I2C_Master_Transmit(&hi2c1, EEPROM_ADDR, buffer, 2, HAL_MAX_DELAY);
+	err = hi2c1.ErrorCode;
 	HAL_Delay(5);
 }
 uint8_t eeprom_read(uint16_t idx) {
+	uint8_t d = 0;
 	uint8_t data = 0;
-	HAL_I2C_Mem_Read(EEPROM_I2C, EEPROM_ADDR, 0, I2C_MEMADD_SIZE_8BIT, &data, 1, 1000);  // write the data to the EEPROM
+	uint8_t status, err;
+	/* using "Current Read" */
+	status = HAL_I2C_Master_Transmit(EEPROM_I2C, EEPROM_ADDR, &d, 1, HAL_MAX_DELAY);
+	err = hi2c1.ErrorCode;
+	HAL_I2C_Master_Receive(EEPROM_I2C, EEPROM_ADDR, &data, 1, 1000);  // write the data to the EEPROM
+	err = hi2c1.ErrorCode;
 	return data;
 }
 
@@ -494,8 +505,18 @@ int main(void)
 	uint16_t temp12b = 0;
 
 	TEMP1_CS(1);
+	TEMP1_CS(0);
+	TEMP5_CS(0);
+	TEMP5_CS(1);
+	TEMP1_CS(1);
+	TEMP1_CS(0);
+	TEMP5_CS(0);
+	TEMP5_CS(1);
+	TEMP1_CS(1);
+	TEMP1_CS(0);
+	TEMP5_CS(0);
+	TEMP5_CS(1);
 	TEMP2_CS(1);
-	TEMP3_CS(1);
 	TEMP4_CS(1);
 	TEMP5_CS(1);
 	TEMP6_CS(1);
@@ -507,7 +528,7 @@ int main(void)
 //	HAL_ADC_Start_DMA(&hadc1, adc_raw, 3); /*A*/
 	/* GSM stuff */
 	char content_string[200] = "";
-	char api_key[20] = "07AFUS2QQTX0QLDF"; /* key for production */
+	char api_key[20] = "F1LOAYMJF47UO4LD"; /* key for testing */
 	// "01VH0OM4JU4KG9KN"; // API key
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
@@ -622,7 +643,7 @@ int main(void)
 		/* routines */
 
 		/*### Sensor read ###*/
-	/*A*/
+		/*A*/
 		if(sensor_refresh_flag == 1) {
 			sensor_rx_select(sensor_idx);
 			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
@@ -996,11 +1017,11 @@ static void MX_SPI2_Init(void)
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES_RXONLY;
-  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.DataSize = SPI_DATASIZE_16BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1065,7 +1086,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 9600;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -1098,6 +1119,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA1_Channel2_3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
 
 }
 
@@ -1130,7 +1154,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, CS_TC2_Pin|CS_TC5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, CS_TC1_Pin|CS_TC2_Pin|CS_TC5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
@@ -1162,8 +1186,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : CS_TC2_Pin CS_TC5_Pin */
-  GPIO_InitStruct.Pin = CS_TC2_Pin|CS_TC5_Pin;
+  /*Configure GPIO pins : CS_TC1_Pin CS_TC2_Pin CS_TC5_Pin */
+  GPIO_InitStruct.Pin = CS_TC1_Pin|CS_TC2_Pin|CS_TC5_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
