@@ -742,6 +742,11 @@ int main(void)
 			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
 			sensor_refresh_flag = 0;
 		}
+
+		/* LED for temp */
+		if(temperatures[0] > 60 || temperatures[1] > 60) {
+			LED1(1);
+		} else LED1(0);
 		//	/* read two sensors, average it if both are working */
 		//	if(temperatures[0] != -99 && temperatures[1] != -99) {
 		//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
