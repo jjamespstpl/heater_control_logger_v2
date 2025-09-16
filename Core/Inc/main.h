@@ -85,6 +85,12 @@ void Error_Handler(void);
 #define RTC_INT_Pin GPIO_PIN_6
 #define RTC_INT_GPIO_Port GPIOC
 #define RTC_INT_EXTI_IRQn EXTI4_15_IRQn
+#define LED_1_Pin GPIO_PIN_15
+#define LED_1_GPIO_Port GPIOA
+#define LED_2_Pin GPIO_PIN_0
+#define LED_2_GPIO_Port GPIOD
+#define LED_3_Pin GPIO_PIN_1
+#define LED_3_GPIO_Port GPIOD
 #define SPI1_CS_Pin GPIO_PIN_3
 #define SPI1_CS_GPIO_Port GPIOD
 #define BTN3_IN_Pin GPIO_PIN_7

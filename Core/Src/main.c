@@ -36,6 +36,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define LED1(S)					(HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, S))
+#define LED2(S)					(HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_1_Pin, S))
+#define LED3(S)					(HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_1_Pin, S))
 #define GSM_WAIT_TIME_LOW		500
 #define GSM_WAIT_TIME_MED		10000
 #define GSM_WAIT_TIME_HIGH		20000
@@ -123,6 +126,7 @@ uint8_t btn1_stat;
 uint8_t btn2_stat;
 uint8_t btn3_stat;
 uint8_t led_blink_flag;
+
 
 void led_blink() {
 	LED_ON();
@@ -463,6 +467,40 @@ uint8_t eeprom_read(uint16_t idx) {
 	return data;
 }
 
+typedef struct {
+    float x1;    // lower input voltage bound
+    float y1;    // output voltage at x1
+    float slope; // slope between this and next point
+} Seg;
+
+Seg segs[] = {
+    {260, 245, 0.5},  // between 260–270
+    {250, 240, 0.5},  // between 250–260
+    {240, 233, 0.7},  // between 240–250
+    {230, 224, 0.9},  // between 230–240
+    {220, 216, 0.8},  // between 220–230
+    {210, 206, 1.0},  // between 210–220
+    {200, 197, 0.9},  // between 200–210
+    {190, 190, 0.7},  // between 190–200
+    {180, 180, 1.0},  // between 180–190
+    {170, 171, 0.9},  // between 170–180
+    {160, 163, 0.8}   // between 160–170
+};
+
+float convert_voltage(float vin) {
+    // linear interpolation by segment
+    for (int i = 0; i < (sizeof(segs)/sizeof(segs[0])) - 1; i++) {
+        float x1 = segs[i].x1;
+        float x2 = segs[i+1].x1;
+        if (vin <= x1 && vin > x2) {
+            float y1 = segs[i].y1;
+            float m  = segs[i].slope;
+            return y1 + m * (vin - x1);
+        }
+    }
+    // outside range: just return vin or clamp
+    return vin;
+}
 
 /* USER CODE END 0 */
 
@@ -654,24 +692,25 @@ int main(void)
 			uint16_t vrms_raw = (acs37800_vi_buffer[1] << 8) | acs37800_vi_buffer[0];
 			vrms_final = vrms_raw / (float)55000;
 			vrms_final = vrms_final * 280;
-			if(vrms_final > 250) {
-				vrms_final = 240 + ((vrms_final - 246)/0.4);
-//				[0.3, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4]
-			} else if(vrms_final <= 250 && vrms_final > 246) {
-				vrms_final = 240 + ((vrms_final - 246)/0.4);
-			} else if(vrms_final <= 246 && vrms_final > 241) {
-				vrms_final = 230 + ((vrms_final - 241)/0.5);
-			} else if(vrms_final <= 235 && vrms_final > 241) {
-				vrms_final = 220 + ((vrms_final - 235)/0.6);
-			} else if(vrms_final <= 228 && vrms_final > 235) {
-				vrms_final = 210 + ((vrms_final - 228)/0.7);
-			} else if(vrms_final <= 220 && vrms_final > 228) {
-				vrms_final = 200 + ((vrms_final - 220)/0.8);
-			} else if(vrms_final <= 213 && vrms_final > 220) {
-				vrms_final = 190 + ((vrms_final - 220)/0.7);
-			} else {
-				vrms_final = 180 + ((vrms_final - 210)/0.4);
-			}
+			vrms_final = convert_voltage(vrms_final);
+//			if(vrms_final > 250) {
+//				vrms_final = 240 + ((vrms_final - 246)/0.4);
+////				[0.3, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4]
+//			} else if(vrms_final <= 250 && vrms_final > 246) {
+//				vrms_final = 240 + ((vrms_final - 246)/0.4);
+//			} else if(vrms_final <= 246 && vrms_final > 241) {
+//				vrms_final = 230 + ((vrms_final - 241)/0.5);
+//			} else if(vrms_final <= 235 && vrms_final > 241) {
+//				vrms_final = 220 + ((vrms_final - 235)/0.6);
+//			} else if(vrms_final <= 228 && vrms_final > 235) {
+//				vrms_final = 210 + ((vrms_final - 228)/0.7);
+//			} else if(vrms_final <= 220 && vrms_final > 228) {
+//				vrms_final = 200 + ((vrms_final - 220)/0.8);
+//			} else if(vrms_final <= 213 && vrms_final > 220) {
+//				vrms_final = 190 + ((vrms_final - 220)/0.7);
+//			} else {
+//				vrms_final = 180 + ((vrms_final - 210)/0.4);
+//			}
 			uint16_t irms_raw = (acs37800_vi_buffer[3] << 8) | acs37800_vi_buffer[2];
 			irms_final = irms_raw / (float)55000;
 			irms_final = irms_final * ACS37800_CURR_SENS_RANGE;
@@ -1193,13 +1232,13 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOF, TRIAC1_Pin|UP_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin|LED_1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, CS_TC1_Pin|CS_TC2_Pin|CS_TC5_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LED_2_Pin|LED_3_Pin|SPI1_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : TRIAC2_Pin PC14 PC15 */
   GPIO_InitStruct.Pin = TRIAC2_Pin|GPIO_PIN_14|GPIO_PIN_15;
@@ -1221,8 +1260,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(ZCD_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : MCU_RESET_Pin MCU_PWRKEY_Pin CS_TC6_Pin */
-  GPIO_InitStruct.Pin = MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin;
+  /*Configure GPIO pins : MCU_RESET_Pin MCU_PWRKEY_Pin CS_TC6_Pin LED_1_Pin */
+  GPIO_InitStruct.Pin = MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin|LED_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1241,12 +1280,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(RTC_INT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SPI1_CS_Pin */
-  GPIO_InitStruct.Pin = SPI1_CS_Pin;
+  /*Configure GPIO pins : LED_2_Pin LED_3_Pin SPI1_CS_Pin */
+  GPIO_InitStruct.Pin = LED_2_Pin|LED_3_Pin|SPI1_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SPI1_CS_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
