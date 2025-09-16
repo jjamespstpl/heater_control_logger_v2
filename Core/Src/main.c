@@ -747,6 +747,9 @@ int main(void)
 		if(temperatures[0] > 60 || temperatures[1] > 60) {
 			LED1(1);
 		} else LED1(0);
+		if(mode != 0 && irms_final <= 0.001f) {
+			LED3(1);
+		} else LED3(0);
 		//	/* read two sensors, average it if both are working */
 		//	if(temperatures[0] != -99 && temperatures[1] != -99) {
 		//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
