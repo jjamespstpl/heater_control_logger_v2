@@ -57,15 +57,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define TRIAC2_Pin GPIO_PIN_13
-#define TRIAC2_GPIO_Port GPIOC
-#define TRIAC1_Pin GPIO_PIN_0
-#define TRIAC1_GPIO_Port GPIOF
 #define UP_LED_Pin GPIO_PIN_1
 #define UP_LED_GPIO_Port GPIOF
-#define ZCD_Pin GPIO_PIN_4
-#define ZCD_GPIO_Port GPIOA
-#define ZCD_EXTI_IRQn EXTI4_15_IRQn
 #define GSM_TX_Pin GPIO_PIN_5
 #define GSM_TX_GPIO_Port GPIOA
 #define MCU_RESET_Pin GPIO_PIN_6
@@ -74,31 +67,6 @@ void Error_Handler(void);
 #define MCU_PWRKEY_GPIO_Port GPIOA
 #define GSM_RX_Pin GPIO_PIN_0
 #define GSM_RX_GPIO_Port GPIOB
-#define CS_TC1_Pin GPIO_PIN_11
-#define CS_TC1_GPIO_Port GPIOB
-#define CS_TC2_Pin GPIO_PIN_12
-#define CS_TC2_GPIO_Port GPIOB
-#define CS_TC5_Pin GPIO_PIN_15
-#define CS_TC5_GPIO_Port GPIOB
-#define CS_TC6_Pin GPIO_PIN_8
-#define CS_TC6_GPIO_Port GPIOA
-#define RTC_INT_Pin GPIO_PIN_6
-#define RTC_INT_GPIO_Port GPIOC
-#define RTC_INT_EXTI_IRQn EXTI4_15_IRQn
-#define LED_1_Pin GPIO_PIN_15
-#define LED_1_GPIO_Port GPIOA
-#define LED_2_Pin GPIO_PIN_0
-#define LED_2_GPIO_Port GPIOD
-#define LED_3_Pin GPIO_PIN_1
-#define LED_3_GPIO_Port GPIOD
-#define SPI1_CS_Pin GPIO_PIN_3
-#define SPI1_CS_GPIO_Port GPIOD
-#define BTN3_IN_Pin GPIO_PIN_7
-#define BTN3_IN_GPIO_Port GPIOB
-#define BTN2_IN_Pin GPIO_PIN_8
-#define BTN2_IN_GPIO_Port GPIOB
-#define BTN1_IN_Pin GPIO_PIN_9
-#define BTN1_IN_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
