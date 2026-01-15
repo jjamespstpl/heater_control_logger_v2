@@ -653,8 +653,40 @@ int main(void)
 	float prms = 0;
 	uint32_t sample = 0;
 
+	static uint8_t adc_cmd32[3] = {0};
+	static uint8_t adc_channel = 0;
+	static uint8_t adc_cs = 0;
+	static uint8_t adc_data_volt[3];
+	static uint8_t adc_data_curr[3];
+	static uint16_t volt = 0;
+	static uint16_t curr = 0;
+
 	while (1)
 	{
+
+	adc_cmd32[2] = 0b1; /* start-bit */
+	adc_cmd32[1] = ((1 << 7) | \
+			(adc_channel << 6) | \
+			(1 << 5)) & \
+			0b00011111;
+	adc_cmd32[0] = 0;
+	HAL_SPI_Transmit(&hspi2, adc_cmd32, 3, 10);
+	switch(adc_channel)
+	{
+	case 0:
+		HAL_SPI_Receive(&hspi2, adc_data_volt, 3, 10);
+		break;
+	case 1:
+		HAL_SPI_Receive(&hspi2, adc_data_curr, 3, 10);
+		break;
+	}
+	adc_channel = adc_channel ? 0 : 1;
+	if(adc_channel) /* if volt & curr read, go to next chip */
+		adc_cs = (adc_cs + 1) % 3;
+
+	/* process it, baby */
+	volt = ((adc_data_volt[1] << 8) | adc_data_volt[0]) & 0x000FFF;
+	curr = ((adc_data_curr[1] << 8) | adc_data_curr[0]) & 0x000FFF;
 
 	/*A*/
 	/*A*/
@@ -1136,12 +1168,12 @@ static void MX_SPI2_Init(void)
   /* SPI2 parameter configuration*/
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
-  hspi2.Init.Direction = SPI_DIRECTION_2LINES_RXONLY;
-  hspi2.Init.DataSize = SPI_DATASIZE_16BIT;
+  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1274,7 +1306,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin|LED_1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, CS_TC1_Pin|CS_TC2_Pin|CS_TC5_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, CS_TC2_Pin|R_CS_Pin|Y_CS_Pin|B_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LED_2_Pin|LED_3_Pin|SPI1_CS_Pin, GPIO_PIN_RESET);
@@ -1306,8 +1338,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : CS_TC1_Pin CS_TC2_Pin CS_TC5_Pin */
-  GPIO_InitStruct.Pin = CS_TC1_Pin|CS_TC2_Pin|CS_TC5_Pin;
+  /*Configure GPIO pins : CS_TC2_Pin R_CS_Pin Y_CS_Pin B_CS_Pin */
+  GPIO_InitStruct.Pin = CS_TC2_Pin|R_CS_Pin|Y_CS_Pin|B_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1326,8 +1358,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  /*Configure GPIO pins : PB3 PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
