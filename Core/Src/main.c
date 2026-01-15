@@ -74,9 +74,9 @@ float pavg_final = 0;
 #define BTN3_READ()		(HAL_GPIO_ReadPin(BTN3_IN_GPIO_Port, BTN3_IN_Pin))
 
 /* 3 TRIACs, for 3 heaters */
-#define TRIAC1_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TRIAC1_GPIO_Port, TRIAC1_Pin, SET_OR_RESET))
-#define TRIAC2_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TRIAC2_GPIO_Port, TRIAC2_Pin, SET_OR_RESET))
-#define TRIAC3_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TRIAC3_GPIO_Port, TRIAC3_Pin, SET_OR_RESET))
+#define TRIAC1_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR1_GPIO_Port, TR1_Pin, SET_OR_RESET))
+#define TRIAC2_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR2_GPIO_Port, TR2_Pin, SET_OR_RESET))
+#define TRIAC3_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR3_GPIO_Port, TR3_Pin, SET_OR_RESET))
 
 #define TRIAC_TRIGGER_TIME    10 /* 100us, 10ms total time for TRIAC to be on */
 /* USER CODE END PM */
@@ -1257,7 +1257,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, TRIAC2_Pin|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, TR1_Pin|TR2_Pin|TR3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOF, TRIAC1_Pin|UP_LED_Pin, GPIO_PIN_RESET);
@@ -1271,8 +1271,8 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LED_2_Pin|LED_3_Pin|SPI1_CS_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : TRIAC2_Pin PC14 PC15 */
-  GPIO_InitStruct.Pin = TRIAC2_Pin|GPIO_PIN_14|GPIO_PIN_15;
+  /*Configure GPIO pins : TR1_Pin TR2_Pin TR3_Pin */
+  GPIO_InitStruct.Pin = TR1_Pin|TR2_Pin|TR3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

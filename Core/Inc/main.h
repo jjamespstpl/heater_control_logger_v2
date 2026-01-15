@@ -57,8 +57,12 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define TRIAC2_Pin GPIO_PIN_13
-#define TRIAC2_GPIO_Port GPIOC
+#define TR1_Pin GPIO_PIN_13
+#define TR1_GPIO_Port GPIOC
+#define TR2_Pin GPIO_PIN_14
+#define TR2_GPIO_Port GPIOC
+#define TR3_Pin GPIO_PIN_15
+#define TR3_GPIO_Port GPIOC
 #define TRIAC1_Pin GPIO_PIN_0
 #define TRIAC1_GPIO_Port GPIOF
 #define UP_LED_Pin GPIO_PIN_1
