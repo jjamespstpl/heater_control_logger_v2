@@ -245,6 +245,7 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
 		/* keep the TRIACs low before triggering */
 		TRIAC1_SET(0); /* trigger delay */
 		TRIAC2_SET(0);
+		TRIAC3_SET(0); /* trigger delay */
 	}
 	if(pin == GPIO_PIN_6) {
 		/* RTC interrupt */
@@ -363,13 +364,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 				triac_timer_flag = 0;
 				TRIAC1_SET(1); /* trigger pulse */
 				TRIAC2_SET(1);
+				TRIAC3_SET(1);
 				for(uint8_t i = 0; i < 100; i++);
 				TRIAC1_SET(0); /* turn it off */
 				TRIAC2_SET(0);
+				TRIAC3_SET(0); /* turn it off */
 			}
 		} else {
 			TRIAC1_SET(0); /* trigger TRIAC */
 			TRIAC2_SET(0);
+			TRIAC3_SET(0); /* turn it off */
 			triac_time = 0;
 		}
 		/*B*/
@@ -561,6 +565,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	TRIAC1_SET(0);
 	TRIAC2_SET(0);
+	TRIAC3_SET(0);
 
   /* USER CODE END 2 */
 
@@ -798,6 +803,7 @@ int main(void)
 			/* Turn TRIAC off */
 			TRIAC1_SET(0);
 			TRIAC2_SET(0);
+			TRIAC3_SET(0);
 			triac_temp_ctrl = 0;
 		}
 		else {
@@ -834,6 +840,7 @@ int main(void)
 				/* keep triacs off */
 				TRIAC1_SET(0);
 				TRIAC2_SET(0);
+				TRIAC3_SET(0);
 			}
 		}
 		else {
@@ -842,6 +849,7 @@ int main(void)
 			/* keep triacs off */
 			TRIAC1_SET(0);
 			TRIAC2_SET(0);
+			TRIAC3_SET(0);
 		}
 
 		/*A*/
