@@ -73,8 +73,10 @@ float pavg_final = 0;
 #define BTN2_READ()		(HAL_GPIO_ReadPin(BTN2_IN_GPIO_Port, BTN2_IN_Pin))
 #define BTN3_READ()		(HAL_GPIO_ReadPin(BTN3_IN_GPIO_Port, BTN3_IN_Pin))
 
+/* 3 TRIACs, for 3 heaters */
 #define TRIAC1_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TRIAC1_GPIO_Port, TRIAC1_Pin, SET_OR_RESET))
 #define TRIAC2_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TRIAC2_GPIO_Port, TRIAC2_Pin, SET_OR_RESET))
+#define TRIAC3_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TRIAC3_GPIO_Port, TRIAC3_Pin, SET_OR_RESET))
 
 #define TRIAC_TRIGGER_TIME    10 /* 100us, 10ms total time for TRIAC to be on */
 /* USER CODE END PM */
