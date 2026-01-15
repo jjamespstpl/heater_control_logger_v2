@@ -37,8 +37,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define LED1(S)					(HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, S))
-#define LED2(S)					(HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_1_Pin, S))
-#define LED3(S)					(HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_1_Pin, S))
+#define LED2(S)					(HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, S))
+#define LED3(S)					(HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, S))
 #define GSM_WAIT_TIME_LOW		500
 #define GSM_WAIT_TIME_MED		10000
 #define GSM_WAIT_TIME_HIGH		20000
@@ -306,6 +306,16 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	}
 }
 
+uint8_t led2_blink_flag, led2_blink_state;
+uint16_t led2_blink_timer;
+void led2_blink() {
+	led2_blink_flag = 1;
+}
+
+void led2_off() {
+	led2_blink_flag = 0;
+	LED2(0);
+}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 	if(htim->Instance == TIM16) {
@@ -333,6 +343,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 			led_blink_flag =  0;
 			LED_OFF();
 		}
+		if(led2_blink_flag) {
+			led2_blink_timer++;
+			if(led2_blink_timer > LED_BLINK_TIME) {
+				LED2(!led2_blink_state); /* toggle LED */
+				led2_blink_timer = 0;
+			}
+		} else LED2(0);
 
 		/*B*/
 		/* If time up, trigger TRIAC */
@@ -747,9 +764,13 @@ int main(void)
 		if(temperatures[0] > 60 || temperatures[1] > 60) {
 			LED1(1);
 		} else LED1(0);
-		if(mode != 0 && irms_final <= 0.001f) {
+		if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && irms_final <= 0.001f) {
 			LED3(1);
 		} else LED3(0);
+		if(triac_temp_ctrl == 0) { /* heater cut-off */
+			/* blink LED2 */
+			led2_blink();
+		} else led2_off();
 		//	/* read two sensors, average it if both are working */
 		//	if(temperatures[0] != -99 && temperatures[1] != -99) {
 		//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
