@@ -576,27 +576,6 @@ int main(void)
 	uint8_t temp_state = 0;
 	uint16_t temp12b = 0;
 
-	TEMP1_CS(1);
-	TEMP1_CS(0);
-	TEMP5_CS(0);
-	TEMP5_CS(1);
-	TEMP1_CS(1);
-	TEMP1_CS(0);
-	TEMP5_CS(0);
-	TEMP5_CS(1);
-	TEMP1_CS(1);
-	TEMP1_CS(0);
-	TEMP5_CS(0);
-	TEMP5_CS(1);
-	TEMP2_CS(1);
-	TEMP4_CS(1);
-	TEMP5_CS(1);
-	TEMP6_CS(1);
-	TEMP1_CS(0);
-
-	adc_raw[0] = 0;
-	adc_raw[1] = 0;
-	adc_raw[2] = 0;
 //	HAL_ADC_Start_DMA(&hadc1, adc_raw, 3); /*A*/
 	/* GSM stuff */
 	char content_string[200] = "";
@@ -604,16 +583,16 @@ int main(void)
 	// "01VH0OM4JU4KG9KN"; // API key
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
-	HAL_Delay(2000);
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
-	HAL_Delay(200);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-	HAL_Delay(200);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-	HAL_Delay(700);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-	HAL_Delay(15000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(2000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
+//	HAL_Delay(200);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+//	HAL_Delay(200);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(700);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+//	HAL_Delay(15000);
 	uint8_t prev_idx = 1;
 
 	/* key variables */
@@ -621,7 +600,7 @@ int main(void)
 	uint16_t set_point = 400; /* Cut the TRIAC off above 400 */
 
 	/* Initialization */
-	HAL_TIM_Base_Start_IT(&htim16);
+//	HAL_TIM_Base_Start_IT(&htim16);
 	triac_timer_flag = 0;
 	gsm_cmd_step = -1;
 
@@ -646,8 +625,8 @@ int main(void)
 //
 //	ds3231_clearalarm1();
 //	//DS3231_SetAlarm1(ALARM_MODE_ONCE_PER_SECOND, 0, 0, 0, 0);
-	ds3231_clearflagalarm1(); /* clear alarm flag */
-	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
+//	ds3231_clearflagalarm1(); /* clear alarm flag */
+//	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
 //	alarmcheck();
 	/*A*/
 	float prms = 0;
@@ -660,29 +639,32 @@ int main(void)
 	static uint8_t adc_data_curr[3];
 	static uint16_t volt = 0;
 	static uint16_t curr = 0;
-
 	while (1)
 	{
 
-	adc_cmd32[2] = 0b1; /* start-bit */
+	HAL_GPIO_WritePin(R_CS_GPIO_Port, R_CS_Pin, 0);
+	HAL_GPIO_WritePin(Y_CS_GPIO_Port, Y_CS_Pin, 1);
+	HAL_GPIO_WritePin(B_CS_GPIO_Port, B_CS_Pin, 1);
+	adc_cmd32[0] = 0b1; /* start-bit */
 	adc_cmd32[1] = ((1 << 7) | \
 			(adc_channel << 6) | \
 			(1 << 5)) & \
 			0b00011111;
-	adc_cmd32[0] = 0;
-	HAL_SPI_Transmit(&hspi2, adc_cmd32, 3, 10);
+	adc_cmd32[2] = 0;
+	HAL_SPI_Transmit(&hspi2, adc_cmd32, 2, 10);
 	switch(adc_channel)
 	{
 	case 0:
-		HAL_SPI_Receive(&hspi2, adc_data_volt, 3, 10);
+		HAL_SPI_Receive(&hspi2, adc_data_volt, 2, 10);
 		break;
 	case 1:
-		HAL_SPI_Receive(&hspi2, adc_data_curr, 3, 10);
+		HAL_SPI_Receive(&hspi2, adc_data_curr, 2, 10);
 		break;
 	}
-	adc_channel = adc_channel ? 0 : 1;
-	if(adc_channel) /* if volt & curr read, go to next chip */
-		adc_cs = (adc_cs + 1) % 3;
+	HAL_GPIO_WritePin(R_CS_GPIO_Port, R_CS_Pin, 1);
+//	adc_channel = adc_channel ? 0 : 1;
+//	if(adc_channel) /* if volt & curr read, go to next chip */
+//		adc_cs = (adc_cs + 1) % 3;
 
 	/* process it, baby */
 	volt = ((adc_data_volt[1] << 8) | adc_data_volt[0]) & 0x000FFF;
@@ -781,23 +763,23 @@ int main(void)
 
 		/*### Sensor read ###*/
 		/*A*/
-		if(sensor_refresh_flag == 1) {
-			sensor_rx_select(sensor_idx);
-			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
-			sensor_rx_disable(); // Disables all IC comms
-			temp_state = (((sdo[0] | (sdo[1] << 8)) >> 2) & 0x0001);
-			temp_word = (sdo[0] | sdo[1] << 8);
-			temp12b = (temp_word & 0b111111111111000) >> 3;
-			/* store the temp */
-			if(temp_state == 1) {
-				temperatures[sensor_idx - 1] = -99;
-			}
-			else {
-				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
-			}
-			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
-			sensor_refresh_flag = 0;
-		}
+//		if(sensor_refresh_flag == 1) {
+//			sensor_rx_select(sensor_idx);
+//			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
+//			sensor_rx_disable(); // Disables all IC comms
+//			temp_state = (((sdo[0] | (sdo[1] << 8)) >> 2) & 0x0001);
+//			temp_word = (sdo[0] | sdo[1] << 8);
+//			temp12b = (temp_word & 0b111111111111000) >> 3;
+//			/* store the temp */
+//			if(temp_state == 1) {
+//				temperatures[sensor_idx - 1] = -99;
+//			}
+//			else {
+//				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
+//			}
+//			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
+//			sensor_refresh_flag = 0;
+//		}
 
 		/* LED for temp */
 		if(temperatures[0] > 60 || temperatures[1] > 60) {
@@ -1373,8 +1355,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+//  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
+//  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
