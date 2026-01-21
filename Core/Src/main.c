@@ -245,7 +245,7 @@ uint8_t vi_update_flag;
 
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
 	// TODO pin check
-	if(pin == GPIO_PIN_4) {
+	if(pin == GPIO_PIN_2) {
 		/* zero crossing detection */
 //		lastime = TIM16->CNT;
 		triac_timer_r = 0;
@@ -253,12 +253,12 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
 		/* keep the TRIACs low before triggering */
 		TRIAC1_SET(0); /* trigger delay */
 	}
-	else if(pin == GPIO_PIN_5) { /* TODO pin fix*/
+	else if(pin == GPIO_PIN_3) { /* TODO pin fix*/
 		triac_timer_y = 0;
 		triac_timer_flag_y = 1;
 		TRIAC2_SET(0);
 	}
-	else if(pin == GPIO_PIN_6) {
+	else if(pin == GPIO_PIN_4) {
 		triac_timer_b = 0;
 		triac_timer_flag_b = 1;
 		TRIAC3_SET(0);
@@ -631,7 +631,7 @@ int main(void)
 	uint16_t set_point = 400; /* Cut the TRIAC off above 400 */
 
 	/* Initialization */
-//	HAL_TIM_Base_Start_IT(&htim16);
+	HAL_TIM_Base_Start_IT(&htim16);
 	triac_timer_flag_r = 0;
 	triac_timer_flag_y = 0;
 	triac_timer_flag_b = 0;
@@ -1388,6 +1388,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_3_IRQn);
+
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 

@@ -69,8 +69,10 @@ void Error_Handler(void);
 #define UP_LED_GPIO_Port GPIOF
 #define R_ZCD_Pin GPIO_PIN_2
 #define R_ZCD_GPIO_Port GPIOA
+#define R_ZCD_EXTI_IRQn EXTI2_3_IRQn
 #define Y_ZCD_Pin GPIO_PIN_3
 #define Y_ZCD_GPIO_Port GPIOA
+#define Y_ZCD_EXTI_IRQn EXTI2_3_IRQn
 #define B_ZCD_Pin GPIO_PIN_4
 #define B_ZCD_GPIO_Port GPIOA
 #define B_ZCD_EXTI_IRQn EXTI4_15_IRQn
