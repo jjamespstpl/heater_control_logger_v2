@@ -67,9 +67,13 @@ void Error_Handler(void);
 #define TRIAC1_GPIO_Port GPIOF
 #define UP_LED_Pin GPIO_PIN_1
 #define UP_LED_GPIO_Port GPIOF
-#define ZCD_Pin GPIO_PIN_4
-#define ZCD_GPIO_Port GPIOA
-#define ZCD_EXTI_IRQn EXTI4_15_IRQn
+#define R_ZCD_Pin GPIO_PIN_2
+#define R_ZCD_GPIO_Port GPIOA
+#define Y_ZCD_Pin GPIO_PIN_3
+#define Y_ZCD_GPIO_Port GPIOA
+#define B_ZCD_Pin GPIO_PIN_4
+#define B_ZCD_GPIO_Port GPIOA
+#define B_ZCD_EXTI_IRQn EXTI4_15_IRQn
 #define GSM_TX_Pin GPIO_PIN_5
 #define GSM_TX_GPIO_Port GPIOA
 #define MCU_RESET_Pin GPIO_PIN_6
