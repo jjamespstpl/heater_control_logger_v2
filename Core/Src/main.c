@@ -221,8 +221,16 @@ uint8_t triac_temp_ctrl;
 uint8_t triac_trigger_flag;
 
 /* GPIO EXTI */
-uint8_t triac_timer_flag;
-float triac_timer, triac_time;
+uint8_t triac_timer_flag_r;
+uint8_t triac_timer_flag_y;
+uint8_t triac_timer_flag_b;
+
+float triac_timer_r;
+float triac_timer_y;
+float triac_timer_b;
+
+float triac_time;
+
 uint32_t tim = 0;
 uint16_t triac_on_time;
 uint8_t triac_mode = MODE_OFF;
@@ -240,12 +248,20 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
 	if(pin == GPIO_PIN_4) {
 		/* zero crossing detection */
 //		lastime = TIM16->CNT;
-		triac_timer = 0;
-		triac_timer_flag = 1; /* allow the timer to run */
+		triac_timer_r = 0;
+		triac_timer_flag_r = 1; /* allow the timer to run */
 		/* keep the TRIACs low before triggering */
 		TRIAC1_SET(0); /* trigger delay */
+	}
+	else if(pin == GPIO_PIN_5) { /* TODO pin fix*/
+		triac_timer_y = 0;
+		triac_timer_flag_y = 1;
 		TRIAC2_SET(0);
-		TRIAC3_SET(0); /* trigger delay */
+	}
+	else if(pin == GPIO_PIN_6) {
+		triac_timer_b = 0;
+		triac_timer_flag_b = 1;
+		TRIAC3_SET(0);
 	}
 	if(pin == GPIO_PIN_6) {
 		/* RTC interrupt */
@@ -357,19 +373,34 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 		/*B*/
 		/* If time up, trigger TRIAC */
 		if(triac_mode == MODE_CTRL) {
-			triac_timer = triac_timer_flag ? triac_timer + 0.1 : 0;
+			triac_timer_r = triac_timer_flag_r ? triac_timer_r + 0.1 : 0;
+			triac_timer_y = triac_timer_flag_y ? triac_timer_y + 0.1 : 0;
+			triac_timer_b = triac_timer_flag_b ? triac_timer_b + 0.1 : 0;
 
-			if(triac_timer >= triac_time) {
+			if(triac_timer_r >= triac_time) {
 				/* trigger TRIAC */
-				triac_timer_flag = 0;
+				triac_timer_flag_r = 0;
 				TRIAC1_SET(1); /* trigger pulse */
-				TRIAC2_SET(1);
-				TRIAC3_SET(1);
 				for(uint8_t i = 0; i < 100; i++);
 				TRIAC1_SET(0); /* turn it off */
-				TRIAC2_SET(0);
+			}
+
+			if(triac_timer_y >= triac_time) {
+				/* trigger TRIAC */
+				triac_timer_flag_y = 0;
+				TRIAC2_SET(1); /* trigger pulse */
+				for(uint8_t i = 0; i < 100; i++);
+				TRIAC2_SET(0); /* turn it off */
+			}
+
+			if(triac_timer_b >= triac_time) {
+				/* trigger TRIAC */
+				triac_timer_flag_b = 0;
+				TRIAC3_SET(1); /* trigger pulse */
+				for(uint8_t i = 0; i < 100; i++);
 				TRIAC3_SET(0); /* turn it off */
 			}
+
 		} else {
 			TRIAC1_SET(0); /* trigger TRIAC */
 			TRIAC2_SET(0);
@@ -601,7 +632,9 @@ int main(void)
 
 	/* Initialization */
 //	HAL_TIM_Base_Start_IT(&htim16);
-	triac_timer_flag = 0;
+	triac_timer_flag_r = 0;
+	triac_timer_flag_y = 0;
+	triac_timer_flag_b = 0;
 	gsm_cmd_step = -1;
 
 	/* ds3231 init */
