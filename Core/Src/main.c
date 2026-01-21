@@ -562,6 +562,11 @@ float convert_voltage(float vin) {
   * @brief  The application entry point.
   * @retval int
   */
+
+static uint8_t adc_data_volt[3];
+static uint8_t adc_data_curr[3];
+static uint16_t volt = 0;
+static uint16_t curr = 0;
 int main(void)
 {
 
@@ -668,10 +673,6 @@ int main(void)
 	static uint8_t adc_cmd32[3] = {0};
 	static uint8_t adc_channel = 0;
 	static uint8_t adc_cs = 0;
-	static uint8_t adc_data_volt[3];
-	static uint8_t adc_data_curr[3];
-	static uint16_t volt = 0;
-	static uint16_t curr = 0;
 	while (1)
 	{
 
@@ -689,19 +690,19 @@ int main(void)
 	{
 	case 0:
 		HAL_SPI_Receive(&hspi2, adc_data_volt, 2, 10);
+		volt = ((adc_data_volt[1] << 8) | adc_data_volt[0]) & 0x000FFF;
 		break;
 	case 1:
 		HAL_SPI_Receive(&hspi2, adc_data_curr, 2, 10);
+		curr = ((adc_data_curr[1] << 8) | adc_data_curr[0]) & 0x000FFF;
 		break;
 	}
 	HAL_GPIO_WritePin(R_CS_GPIO_Port, R_CS_Pin, 1);
-//	adc_channel = adc_channel ? 0 : 1;
+	adc_channel = adc_channel ? 0 : 1;
 //	if(adc_channel) /* if volt & curr read, go to next chip */
 //		adc_cs = (adc_cs + 1) % 3;
 
 	/* process it, baby */
-	volt = ((adc_data_volt[1] << 8) | adc_data_volt[0]) & 0x000FFF;
-	curr = ((adc_data_curr[1] << 8) | adc_data_curr[0]) & 0x000FFF;
 
 	/*A*/
 	/*A*/
