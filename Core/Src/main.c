@@ -637,7 +637,7 @@ int main(void)
 
 	/* GSM stuff */
 	char content_string[200] = "";
-	char api_key[20] = "F1LOAYMJF47UO4LD"; /* key for testing */
+	char api_key[20] = "07AFUS2QQTX0QLDF"; /* key for testing */
 	// "01VH0OM4JU4KG9KN"; // API key
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
@@ -1023,11 +1023,11 @@ int main(void)
 					gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","CONNECT 115200", GSM_WAIT_TIME_MED);
 					break;
 				case 13:
-					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%.1f&field6=%.1f&field7=%.1f&field8=%.1f&field9=%.1f\r\n" \
+					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%.1f&field6=%.1f&field7=%.1f&field8=%d\r\n" \
 							"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
 							api_key, (int)temperatures[0], (int)temperatures[1], (int)mode, \
-							(float)adc_pv_volt[R_PH], (float)adc_pv_volt[Y_PH], (float)adc_pv_volt[B_PH],\
-							(float)adc_pv_curr[R_PH], (float)adc_pv_curr[Y_PH], (float)adc_pv_curr[B_PH]);
+							(float)adc_pv_volt[R_PH], (float)adc_pv_curr[R_PH], (float)adc_pv_curr[Y_PH],\
+							(float)adc_pv_curr[B_PH], 0);
 					/* to upload:
 					 * t1
 					 * t2
