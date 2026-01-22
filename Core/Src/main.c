@@ -77,6 +77,13 @@ float pavg_final = 0;
 #define TRIAC1_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR1_GPIO_Port, TR1_Pin, SET_OR_RESET))
 #define TRIAC2_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR2_GPIO_Port, TR2_Pin, SET_OR_RESET))
 #define TRIAC3_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR3_GPIO_Port, TR3_Pin, SET_OR_RESET))
+#define TS1_CS(SET_OR_RESET) (HAL_GPIO_WritePin(TC1_CS_GPIO_Port, TC1_CS_Pin, SET_OR_RESET))
+#define TS2_CS(SET_OR_RESET) (HAL_GPIO_WritePin(TC5_CS_GPIO_Port, TC5_CS_Pin, SET_OR_RESET))
+#define R_CS(SET_OR_RESET) (HAL_GPIO_WritePin(R_CS_GPIO_Port, R_CS_Pin, SET_OR_RESET))
+#define Y_CS(SET_OR_RESET) (HAL_GPIO_WritePin(Y_CS_GPIO_Port, Y_CS_Pin, SET_OR_RESET))
+#define B_CS(SET_OR_RESET) (HAL_GPIO_WritePin(B_CS_GPIO_Port, B_CS_Pin, SET_OR_RESET))
+#define TRIAC2_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR2_GPIO_Port, TR2_Pin, SET_OR_RESET))
+#define TRIAC3_SET(SET_OR_RESET) (HAL_GPIO_WritePin(TR3_GPIO_Port, TR3_Pin, SET_OR_RESET))
 
 #define TRIAC_TRIGGER_TIME    10 /* 100us, 10ms total time for TRIAC to be on */
 /* USER CODE END PM */
@@ -556,17 +563,28 @@ float convert_voltage(float vin) {
     return vin;
 }
 
+static uint8_t adc_data_volt[3];
+static uint8_t adc_data_curr[3];
+static uint16_t adc_data_volt_raw[3];
+static uint16_t adc_data_curr_raw[3];
+static uint32_t adc_data_volt_avg[3];
+static uint32_t adc_data_curr_avg[3];
+static float adc_pv_volt[3];
+static float adc_pv_curr[3];
+
+static uint16_t volt = 0;
+static uint16_t curr = 0;
+typedef enum {
+	R_PH,
+	Y_PH,
+	B_PH
+} Phase_Id;
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-
-static uint8_t adc_data_volt[3];
-static uint8_t adc_data_curr[3];
-static uint16_t volt = 0;
-static uint16_t curr = 0;
 int main(void)
 {
 
@@ -602,6 +620,11 @@ int main(void)
 	TRIAC1_SET(0);
 	TRIAC2_SET(0);
 	TRIAC3_SET(0);
+	TS1_CS(1);
+	TS2_CS(1);
+	R_CS(1);
+	Y_CS(1);
+	B_CS(1);
 
   /* USER CODE END 2 */
 
@@ -673,12 +696,14 @@ int main(void)
 	static uint8_t adc_cmd32[3] = {0};
 	static uint8_t adc_channel = 0;
 	static uint8_t adc_cs = 0;
+
+	static uint32_t sample_count = 0;
+
 	while (1)
 	{
 
-	HAL_GPIO_WritePin(R_CS_GPIO_Port, R_CS_Pin, 0);
-	HAL_GPIO_WritePin(Y_CS_GPIO_Port, Y_CS_Pin, 1);
-	HAL_GPIO_WritePin(B_CS_GPIO_Port, B_CS_Pin, 1);
+	B_CS(0);
+
 	adc_cmd32[0] = 0b1; /* start-bit */
 	adc_cmd32[1] = ((1 << 7) | \
 			(adc_channel << 6) | \
@@ -690,15 +715,28 @@ int main(void)
 	{
 	case 0:
 		HAL_SPI_Receive(&hspi2, adc_data_volt, 2, 10);
-		volt = ((adc_data_volt[1] << 8) | adc_data_volt[0]) & 0x000FFF;
+		adc_data_volt_raw[R_PH] = ((adc_data_volt[1] << 8) | adc_data_volt[0]) & 0x000FFF;
+		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH] + adc_data_volt_raw[R_PH];
 		break;
 	case 1:
 		HAL_SPI_Receive(&hspi2, adc_data_curr, 2, 10);
-		curr = ((adc_data_curr[1] << 8) | adc_data_curr[0]) & 0x000FFF;
+		adc_data_curr_raw[R_PH] = ((adc_data_curr[1] << 8) | adc_data_curr[0]) & 0x000FFF;
+		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH] + adc_data_curr_raw[R_PH];
 		break;
 	}
-	HAL_GPIO_WritePin(R_CS_GPIO_Port, R_CS_Pin, 1);
+	sample_count++;
+	if(sample_count >= 2000) {
+		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH]/1000.0f;
+		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH]/1000.0f;
+		adc_pv_volt[R_PH] = (float)(adc_data_volt_avg[R_PH] * (3.3f/4095.0f) * (250.0f/2.5f));
+		adc_pv_curr[R_PH] = (float)(adc_data_curr_avg[R_PH] * (3.3f/4095.0f) * (25.0f/2.5f));
+		adc_data_volt_avg[R_PH] = 0;
+		adc_data_curr_avg[R_PH] = 0;
+		sample_count = 0;
+	}
+	B_CS(1);
 	adc_channel = adc_channel ? 0 : 1;
+	HAL_Delay(1);
 //	if(adc_channel) /* if volt & curr read, go to next chip */
 //		adc_cs = (adc_cs + 1) % 3;
 
@@ -1328,16 +1366,17 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, TR1_Pin|TR2_Pin|TR3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOF, TRIAC1_Pin|UP_LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(UP_LED_GPIO_Port, UP_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin|LED_1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, MCU_RESET_Pin|MCU_PWRKEY_Pin|TC1_CS_Pin|TC5_CS_Pin
+                          |LED_1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, CS_TC2_Pin|R_CS_Pin|Y_CS_Pin|B_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, R_CS_Pin|Y_CS_Pin|B_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LED_2_Pin|LED_3_Pin|SPI1_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LED_2_Pin|LED_3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : TR1_Pin TR2_Pin TR3_Pin */
   GPIO_InitStruct.Pin = TR1_Pin|TR2_Pin|TR3_Pin;
@@ -1346,12 +1385,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : TRIAC1_Pin UP_LED_Pin */
-  GPIO_InitStruct.Pin = TRIAC1_Pin|UP_LED_Pin;
+  /*Configure GPIO pin : UP_LED_Pin */
+  GPIO_InitStruct.Pin = UP_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+  HAL_GPIO_Init(UP_LED_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : R_ZCD_Pin Y_ZCD_Pin B_ZCD_Pin */
   GPIO_InitStruct.Pin = R_ZCD_Pin|Y_ZCD_Pin|B_ZCD_Pin;
@@ -1359,18 +1398,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : MCU_RESET_Pin MCU_PWRKEY_Pin CS_TC6_Pin LED_1_Pin */
-  GPIO_InitStruct.Pin = MCU_RESET_Pin|MCU_PWRKEY_Pin|CS_TC6_Pin|LED_1_Pin;
+  /*Configure GPIO pins : MCU_RESET_Pin MCU_PWRKEY_Pin TC1_CS_Pin TC5_CS_Pin
+                           LED_1_Pin */
+  GPIO_InitStruct.Pin = MCU_RESET_Pin|MCU_PWRKEY_Pin|TC1_CS_Pin|TC5_CS_Pin
+                          |LED_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : CS_TC2_Pin R_CS_Pin Y_CS_Pin B_CS_Pin */
-  GPIO_InitStruct.Pin = CS_TC2_Pin|R_CS_Pin|Y_CS_Pin|B_CS_Pin;
+  /*Configure GPIO pins : R_CS_Pin Y_CS_Pin B_CS_Pin */
+  GPIO_InitStruct.Pin = R_CS_Pin|Y_CS_Pin|B_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RTC_INT_Pin */
@@ -1379,20 +1420,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(RTC_INT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LED_2_Pin LED_3_Pin SPI1_CS_Pin */
-  GPIO_InitStruct.Pin = LED_2_Pin|LED_3_Pin|SPI1_CS_Pin;
+  /*Configure GPIO pins : LED_2_Pin LED_3_Pin */
+  GPIO_InitStruct.Pin = LED_2_Pin|LED_3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB3 PB4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF0_SPI1;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BTN3_IN_Pin BTN2_IN_Pin BTN1_IN_Pin */
   GPIO_InitStruct.Pin = BTN3_IN_Pin|BTN2_IN_Pin|BTN1_IN_Pin;
