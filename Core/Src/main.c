@@ -702,7 +702,20 @@ int main(void)
 	while (1)
 	{
 
-	B_CS(0);
+	switch(adc_cs)
+	{
+	case R_PH:
+		R_CS(0);
+		break;
+	case Y_PH:
+		Y_CS(0);
+		break;
+	case B_PH:
+		B_CS(0);
+		break;
+	default:
+		R_CS(0);
+	}
 	adc_cmd32[0] = 0x01;
 	adc_cmd32[1] = (adc_channel == 0) ? 0x80 : 0xC0; // Single-ended CH0 or CH1
 	adc_cmd32[2] = 0x00;
@@ -712,30 +725,35 @@ int main(void)
 		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_volt, 3, 100) == HAL_OK) {
 			// 4. Parse 12-bit result from last 2 bytes
 			// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
-			adc_data_volt_raw[R_PH] = ((adc_data_volt[1] & 0x0F) << 8) | adc_data_volt[2];
-			adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH] + adc_data_volt_raw[R_PH];
+			adc_data_volt_raw[adc_cs] = ((adc_data_volt[1] & 0x0F) << 8) | adc_data_volt[2];
+			adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs] + adc_data_volt_raw[adc_cs];
 		}
 		break;
 	case 1:
-		HAL_SPI_Receive(&hspi2, adc_data_curr, 2, 100);
-		adc_data_curr_raw[R_PH] = ((adc_data_curr[0] << 8) | adc_data_curr[1]) & 0x000FFF;
-		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH] + adc_data_curr_raw[R_PH];
+		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_volt, 3, 100) == HAL_OK) {
+			// 4. Parse 12-bit result from last 2 bytes
+			// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
+			adc_data_curr_raw[adc_cs] = ((adc_data_curr[1] & 0x0F) << 8) | adc_data_curr[2];
+			adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs] + adc_data_curr_raw[adc_cs];
+		}
 		break;
 	}
 	sample_count++;
 	if(sample_count >= 1000) {
-		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH]/500.0f;
-		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH]/500.0f;
-		adc_pv_volt[R_PH] = (float)(adc_data_volt_avg[R_PH] * (3.33f/4095.0f) * (250.0f/2.5f));
-		adc_pv_curr[R_PH] = (float)(adc_data_curr_avg[R_PH] * (3.33f/4095.0f) * (25.0f/2.5f));
-		adc_data_volt_avg[R_PH] = 0;
-		adc_data_curr_avg[R_PH] = 0;
+		adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/500.0f;
+		adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/500.0f;
+		adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f) * (250.0f/2.5f));
+		adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f) * (25.0f/2.5f));
+		adc_data_volt_avg[adc_cs] = 0;
+		adc_data_curr_avg[adc_cs] = 0;
 		sample_count = 0;
 	}
+	R_CS(1);
+	Y_CS(1);
 	B_CS(1);
 	adc_channel = adc_channel ? 0 : 1;
-//	if(adc_channel) /* if volt & curr read, go to next chip */
-//		adc_cs = (adc_cs + 1) % 3;
+	if(adc_channel) /* if volt & curr read, go to next chip */
+		adc_cs = (adc_cs + 1) % 3;
 
 	/* process it, baby */
 
