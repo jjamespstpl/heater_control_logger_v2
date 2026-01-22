@@ -797,23 +797,35 @@ int main(void)
 
 		/*### Sensor read ###*/
 		/*A*/
-//		if(sensor_refresh_flag == 1) {
-//			sensor_rx_select(sensor_idx);
-//			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
-//			sensor_rx_disable(); // Disables all IC comms
-//			temp_state = (((sdo[0] | (sdo[1] << 8)) >> 2) & 0x0001);
-//			temp_word = (sdo[0] | sdo[1] << 8);
-//			temp12b = (temp_word & 0b111111111111000) >> 3;
-//			/* store the temp */
-//			if(temp_state == 1) {
-//				temperatures[sensor_idx - 1] = -99;
-//			}
-//			else {
-//				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
-//			}
-//			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
-//			sensor_refresh_flag = 0;
-//		}
+		if(sensor_refresh_flag == 1) {
+			R_CS(1);
+			Y_CS(1);
+			B_CS(1);
+			if(sensor_idx == 1) {
+				TS1_CS(0);
+				TS2_CS(1);
+			}
+			else {
+				TS1_CS(1);
+				TS2_CS(0);
+			}
+			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
+			/* disable CS */
+			TS1_CS(1);
+			TS2_CS(1);
+			temp_state = (((sdo[1] | (sdo[0] << 8)) >> 2) & 0x0001);
+			temp_word = (sdo[1] | sdo[0] << 8);
+			temp12b = (temp_word & 0b111111111111000) >> 3;
+			/* store the temp */
+			if(temp_state == 1) {
+				temperatures[sensor_idx - 1] = -99;
+			}
+			else {
+				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
+			}
+			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
+			sensor_refresh_flag = 0;
+		}
 
 		/* LED for temp */
 		if(temperatures[0] > 60 || temperatures[1] > 60) {
