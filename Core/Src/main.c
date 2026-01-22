@@ -703,40 +703,37 @@ int main(void)
 	{
 
 	B_CS(0);
-
-	adc_cmd32[0] = 0b1; /* start-bit */
-	adc_cmd32[1] = ((1 << 7) | \
-			(adc_channel << 6) | \
-			(1 << 5)) & \
-			0b00011111;
-	adc_cmd32[2] = 0;
-	HAL_SPI_Transmit(&hspi2, adc_cmd32, 2, 10);
+	adc_cmd32[0] = 0x01;
+	adc_cmd32[1] = (adc_channel == 0) ? 0x80 : 0xC0; // Single-ended CH0 or CH1
+	adc_cmd32[2] = 0x00;
 	switch(adc_channel)
 	{
 	case 0:
-		HAL_SPI_Receive(&hspi2, adc_data_volt, 2, 10);
-		adc_data_volt_raw[R_PH] = ((adc_data_volt[0] << 8) | adc_data_volt[1]) & 0x000FFF;
-		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH] + adc_data_volt_raw[R_PH];
+		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_volt, 3, 100) == HAL_OK) {
+			// 4. Parse 12-bit result from last 2 bytes
+			// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
+			adc_data_volt_raw[R_PH] = ((adc_data_volt[1] & 0x0F) << 8) | adc_data_volt[2];
+			adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH] + adc_data_volt_raw[R_PH];
+		}
 		break;
 	case 1:
-		HAL_SPI_Receive(&hspi2, adc_data_curr, 2, 10);
+		HAL_SPI_Receive(&hspi2, adc_data_curr, 2, 100);
 		adc_data_curr_raw[R_PH] = ((adc_data_curr[0] << 8) | adc_data_curr[1]) & 0x000FFF;
 		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH] + adc_data_curr_raw[R_PH];
 		break;
 	}
 	sample_count++;
-	if(sample_count >= 500) {
-		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH]/250.0f;
-		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH]/250.0f;
-		adc_pv_volt[R_PH] = (float)(adc_data_volt_avg[R_PH] * (3.3f/4095.0f) * (250.0f/2.5f));
-		adc_pv_curr[R_PH] = (float)(adc_data_curr_avg[R_PH] * (3.3f/4095.0f) * (25.0f/2.5f));
+	if(sample_count >= 1000) {
+		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH]/500.0f;
+		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH]/500.0f;
+		adc_pv_volt[R_PH] = (float)(adc_data_volt_avg[R_PH] * (3.33f/4095.0f) * (250.0f/2.5f));
+		adc_pv_curr[R_PH] = (float)(adc_data_curr_avg[R_PH] * (3.33f/4095.0f) * (25.0f/2.5f));
 		adc_data_volt_avg[R_PH] = 0;
 		adc_data_curr_avg[R_PH] = 0;
 		sample_count = 0;
 	}
 	B_CS(1);
 	adc_channel = adc_channel ? 0 : 1;
-	HAL_Delay(1);
 //	if(adc_channel) /* if volt & curr read, go to next chip */
 //		adc_cs = (adc_cs + 1) % 3;
 
@@ -1236,10 +1233,10 @@ static void MX_SPI2_Init(void)
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
   hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
   hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
