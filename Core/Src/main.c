@@ -635,7 +635,6 @@ int main(void)
 	uint8_t temp_state = 0;
 	uint16_t temp12b = 0;
 
-//	HAL_ADC_Start_DMA(&hadc1, adc_raw, 3); /*A*/
 	/* GSM stuff */
 	char content_string[200] = "";
 	char api_key[20] = "F1LOAYMJF47UO4LD"; /* key for testing */
@@ -1024,17 +1023,22 @@ int main(void)
 					gsm_cmd("AT+CCHOPEN=0,\"api.thingspeak.com\",443,2","CONNECT 115200", GSM_WAIT_TIME_MED);
 					break;
 				case 13:
-					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%d&field6=%.1f\r\n" \
+					sprintf(content_string, "GET /update?api_key=%s&field1=%d&field2=%d&field3=%d&field4=%.1f&field5=%.1f&field6=%.1f&field7=%.1f&field8=%.1f&field9=%.1f\r\n" \
 							"HTTP/1.1\r\nHost: api.thingspeak.com\r\n", \
 							api_key, (int)temperatures[0], (int)temperatures[1], (int)mode, \
-							(float)irms_final, (int)vrms_final, kwh);
+							(float)adc_pv_volt[R_PH], (float)adc_pv_volt[Y_PH], (float)adc_pv_volt[B_PH],\
+							(float)adc_pv_curr[R_PH], (float)adc_pv_curr[Y_PH], (float)adc_pv_curr[B_PH]);
 					/* to upload:
-					 * cur
-					 * vol
+					 * t1
+					 * t2
+					 * mode
+					 * r_v
+					 * y_v
+					 * b_v
+					 * r_a
+					 * y_a
+					 * b_a
 					 * kwh
-					 * temp 1
-					 * temp 2
-					 *
 					 */
 					gsm_cmd(content_string, "200 OK", GSM_WAIT_TIME_MED);
 					break;
