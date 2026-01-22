@@ -715,19 +715,19 @@ int main(void)
 	{
 	case 0:
 		HAL_SPI_Receive(&hspi2, adc_data_volt, 2, 10);
-		adc_data_volt_raw[R_PH] = ((adc_data_volt[1] << 8) | adc_data_volt[0]) & 0x000FFF;
+		adc_data_volt_raw[R_PH] = ((adc_data_volt[0] << 8) | adc_data_volt[1]) & 0x000FFF;
 		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH] + adc_data_volt_raw[R_PH];
 		break;
 	case 1:
 		HAL_SPI_Receive(&hspi2, adc_data_curr, 2, 10);
-		adc_data_curr_raw[R_PH] = ((adc_data_curr[1] << 8) | adc_data_curr[0]) & 0x000FFF;
+		adc_data_curr_raw[R_PH] = ((adc_data_curr[0] << 8) | adc_data_curr[1]) & 0x000FFF;
 		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH] + adc_data_curr_raw[R_PH];
 		break;
 	}
 	sample_count++;
-	if(sample_count >= 2000) {
-		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH]/1000.0f;
-		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH]/1000.0f;
+	if(sample_count >= 500) {
+		adc_data_volt_avg[R_PH] = adc_data_volt_avg[R_PH]/250.0f;
+		adc_data_curr_avg[R_PH] = adc_data_curr_avg[R_PH]/250.0f;
 		adc_pv_volt[R_PH] = (float)(adc_data_volt_avg[R_PH] * (3.3f/4095.0f) * (250.0f/2.5f));
 		adc_pv_curr[R_PH] = (float)(adc_data_curr_avg[R_PH] * (3.3f/4095.0f) * (25.0f/2.5f));
 		adc_data_volt_avg[R_PH] = 0;
