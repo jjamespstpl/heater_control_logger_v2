@@ -369,18 +369,18 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 		btn2_timer = btn2_flag ? btn2_timer + 1: 0;
 		btn3_timer = btn3_flag ? btn3_timer + 1: 0;
 		led_blink_timer = led_blink_flag ? led_blink_timer + 1: 0;
-		if(led_blink_timer > LED_BLINK_TIME) {
-			led_blink_flag =  0;
-			LED_OFF();
-		}
-		if(led2_blink_flag) {
-			led2_blink_timer++;
-			if(led2_blink_timer > LED_BLINK_TIME) {
-				LED2(!led2_blink_state); /* toggle LED */
-				led2_blink_timer = 0;
-			}
-		} else LED2(0);
-
+//		if(led_blink_timer > LED_BLINK_TIME) {
+//			led_blink_flag =  0;
+//			LED_OFF();
+//		}
+//		if(led2_blink_flag) {
+//			led2_blink_timer++;
+//			if(led2_blink_timer > LED_BLINK_TIME) {
+//				LED2(!led2_blink_state); /* toggle LED */
+//				led2_blink_timer = 0;
+//			}
+//		} else LED2(0);
+//
 		/*B*/
 		/* If time up, trigger TRIAC */
 		if(triac_mode == MODE_CTRL) {
@@ -646,17 +646,17 @@ int main(void)
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
 	// PWRKEY dance. Credits: Indra
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
-	HAL_Delay(2000);
-	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
-	HAL_Delay(200);
-
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-	HAL_Delay(200);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-	HAL_Delay(700);
-	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-	HAL_Delay(15000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
+//	HAL_Delay(2000);
+//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(200);
+//
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(200);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+//	HAL_Delay(700);
+//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+//	HAL_Delay(15000);
 
 	uint8_t prev_idx = 1;
 
@@ -821,25 +821,11 @@ int main(void)
 			(adc_pv_curr[B_PH] <= 0.001f)) {
 		LED3(1);
 	} else LED3(0);
-	if(triac_temp_ctrl == 0) { /* heater cut-off */
+	if(mode != 0) { /* heater cut-off */
 		/* blink LED2 */
-		led2_blink();
-	} else led2_off();
-	//	/* read two sensors, average it if both are working */
-	//	if(temperatures[0] != -99 && temperatures[1] != -99) {
-	//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
-	//		active_sensor_idx = 2;
-	//	}
-	//	else if(temperatures[0] != -99 && temperatures[1] == -99) {
-	//		active_sensor_idx = 0;
-	//	}
-	//	else if(temperatures[0] == -99 && temperatures[1] != -99) {
-	//		active_sensor_idx = 1;
-	//	}
-	//	else {
-	//		temperatures[2] = -99;
-	//		active_sensor_idx = 2;
-	//	}
+		LED2(1);
+	} else LED2(0);
+
 	sdo[0] = 0;
 	sdo[1] = 0;
 	temp_word = 0;
