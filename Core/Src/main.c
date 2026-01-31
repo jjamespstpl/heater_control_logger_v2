@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "temp.h"
 #include "ds3231.h"
+#include "e24.h"
 #include "../../ECUAL/I2C_LCD/I2C_LCD.h"
 #include <stdio.h>
 #include <string.h>
@@ -106,6 +107,7 @@ DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 uint32_t baudRate;
+EE24_HandleTypeDef ee;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -249,7 +251,6 @@ uint8_t kwh_time_count; /* TODO remove */
 uint8_t kwh_update_flag;
 uint8_t vi_update_flag;
 /*###*/
-#define EEPROM_KWH_MEM_ADDR	(0x0)
 
 
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
@@ -439,133 +440,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 #define EEPROM_I2C &hi2c1
 // EEPROM ADDRESS (8bits)
 #define EEPROM_ADDR 0xAE
+#define EEPROM_KWH_MEM_ADDR	(0x0)
 
-// Define the Page Size and number of pages
-#define PAGE_SIZE 16     // in Bytes
-#define PAGE_NUM  32    // number of pages
-
-void EEPROM_Write(uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
-{
-
-	// Find out the number of bit, where the page addressing starts
-	int paddrposition = log(PAGE_SIZE)/log(2);
-
-	// calculate the start page and the end page
-	uint16_t startPage = page;
-	uint16_t endPage = page + ((size+offset)/PAGE_SIZE);
-
-	// number of pages to be written
-	uint16_t numofpages = (endPage-startPage) + 1;
-	uint16_t pos=0;
-
-	// write the data
-	for (int i=0; i<numofpages; i++)
-	{
-		/* calculate the address of the memory location
-		 * Here we add the page address with the byte address
-		 */
-		uint16_t MemAddress = startPage<<paddrposition | offset;
-		uint16_t bytesremaining = 2;
-
-		HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, &data[pos], bytesremaining, 1000);  // write the data to the EEPROM
-
-		startPage += 1;  // increment the page, so that a new page address can be selected for further write
-		offset=0;   // since we will be writing to a new page, so offset will be 0
-		size = size-bytesremaining;  // reduce the size of the bytes
-		pos += bytesremaining;  // update the position for the data buffer
-
-		HAL_Delay (5);  // Write cycle delay (5ms)/*TODO implement using timer: eeprom_busy_flag */
-	}
-}
-//
-void EEPROM_Read(uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
-{
-	int paddrposition = log(PAGE_SIZE)/log(2);
-
-	uint16_t startPage = page;
-	uint16_t endPage = page + ((size+offset)/PAGE_SIZE);
-
-	uint16_t numofpages = (endPage-startPage) + 1;
-	uint16_t pos=0;
-
-	for (int i=0; i<numofpages; i++)
-	{
-		uint16_t MemAddress = startPage<<paddrposition | offset;
-		uint16_t bytesremaining = 2;
-		HAL_I2C_Mem_Read(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, data, 2, 1000);
-		startPage += 1;
-		offset=0;
-		size = size-bytesremaining;
-		pos += bytesremaining;
-	}
-}
-
-
-
-void eeprom_write(uint16_t idx, uint8_t data) {
-	uint8_t d = data;
-	uint8_t status, err;
-	uint8_t buffer[2];
-	buffer[0] = 0x0;
-	buffer[1] = data;
-	status = HAL_I2C_IsDeviceReady(EEPROM_I2C, EEPROM_ADDR, 10, HAL_MAX_DELAY);
-	status = HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR ,0, I2C_MEMADD_SIZE_8BIT, &d, 1, HAL_MAX_DELAY);  // write the data to the EEPROM
-//    status = HAL_I2C_Master_Transmit(&hi2c1, EEPROM_ADDR, buffer, 2, HAL_MAX_DELAY);
-	err = hi2c1.ErrorCode;
-	HAL_Delay(5);
-}
-uint8_t eeprom_read(uint16_t idx) {
-	uint8_t d = 0;
-	uint8_t data = 0;
-	uint8_t status, err;
-	/* using "Current Read" */
-	for(uint8_t i = 0; i < 128; i++) {
-		d = i;
-		status = HAL_I2C_Master_Transmit(EEPROM_I2C, EEPROM_ADDR, &d, 1, HAL_MAX_DELAY);
-		err = hi2c1.ErrorCode;
-	status = HAL_I2C_IsDeviceReady(EEPROM_I2C, EEPROM_ADDR, 10, HAL_MAX_DELAY);
-	if(status == 0) {
-		HAL_I2C_Master_Receive(EEPROM_I2C, EEPROM_ADDR, &data, 1, 1000);  // write the data to the EEPROM
-		err = hi2c1.ErrorCode;
-	}
-	}
-	return data;
-}
-
-typedef struct {
-    float x1;    // lower input voltage bound
-    float y1;    // output voltage at x1
-    float slope; // slope between this and next point
-} Seg;
-
-Seg segs[] = {
-    {260, 245, 0.5},  // between 260–270
-    {250, 240, 0.5},  // between 250–260
-    {240, 233, 0.7},  // between 240–250
-    {230, 224, 0.9},  // between 230–240
-    {220, 216, 0.8},  // between 220–230
-    {210, 206, 1.0},  // between 210–220
-    {200, 197, 0.9},  // between 200–210
-    {190, 190, 0.7},  // between 190–200
-    {180, 180, 1.0},  // between 180–190
-    {170, 171, 0.9},  // between 170–180
-    {160, 163, 0.8}   // between 160–170
-};
-
-float convert_voltage(float vin) {
-    // linear interpolation by segment
-    for (int i = 0; i < (sizeof(segs)/sizeof(segs[0])) - 1; i++) {
-        float x1 = segs[i].x1;
-        float x2 = segs[i+1].x1;
-        if (vin <= x1 && vin > x2) {
-            float y1 = segs[i].y1;
-            float m  = segs[i].slope;
-            return y1 + m * (vin - x1);
-        }
-    }
-    // outside range: just return vin or clamp
-    return vin;
-}
 
 static uint8_t adc_data_volt[3];
 static uint8_t adc_data_curr[3];
@@ -576,8 +452,6 @@ static uint32_t adc_data_curr_avg[3];
 static float adc_pv_volt[3];
 static float adc_pv_curr[3];
 
-static uint16_t volt = 0;
-static uint16_t curr = 0;
 typedef enum {
 	R_PH,
 	Y_PH,
@@ -592,35 +466,35 @@ typedef enum {
 int main(void)
 {
 
-  /* USER CODE BEGIN 1 */
+	/* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+	/* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+	/* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
 
-  /* USER CODE BEGIN Init */
+	/* USER CODE BEGIN Init */
 
-  /* USER CODE END Init */
+	/* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	/* Configure the system clock */
+	SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+	/* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+	/* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_TIM16_Init();
-  MX_I2C1_Init();
-  MX_USART3_UART_Init();
-  MX_ADC1_Init();
-  MX_SPI2_Init();
-  /* USER CODE BEGIN 2 */
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_TIM16_Init();
+	MX_I2C1_Init();
+	MX_USART3_UART_Init();
+	MX_ADC1_Init();
+	MX_SPI2_Init();
+	/* USER CODE BEGIN 2 */
 	TRIAC1_SET(0);
 	TRIAC2_SET(0);
 	TRIAC3_SET(0);
@@ -630,10 +504,10 @@ int main(void)
 	Y_CS(1);
 	B_CS(1);
 
-  /* USER CODE END 2 */
+	/* USER CODE END 2 */
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
 	uint8_t sdo[2] = { 0, 0 };
 	uint16_t temp_word;
 	uint8_t temp_state = 0;
@@ -646,17 +520,17 @@ int main(void)
 	/* GSM powerkey dance */
 	/* TODO implement this using timer interrupts */
 	// PWRKEY dance. Credits: Indra
-//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
-//	HAL_Delay(2000);
-//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
-//	HAL_Delay(200);
-//
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-//	HAL_Delay(200);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
-//	HAL_Delay(700);
-//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
-//	HAL_Delay(15000);
+	//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_SET);
+	//	HAL_Delay(2000);
+	//	HAL_GPIO_WritePin(MCU_RESET_GPIO_Port,MCU_RESET_Pin,GPIO_PIN_RESET);
+	//	HAL_Delay(200);
+	//
+	//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+	//	HAL_Delay(200);
+	//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_SET);
+	//	HAL_Delay(700);
+	//	HAL_GPIO_WritePin(MCU_PWRKEY_GPIO_Port,MCU_PWRKEY_Pin,GPIO_PIN_RESET);
+	//	HAL_Delay(15000);
 
 	uint8_t prev_idx = 1;
 
@@ -684,20 +558,19 @@ int main(void)
 	uint8_t data[] = { 2, 3 };
 	uint8_t rdata[2] = {};
 
-//	uint8_t ee_var[] = {0,0,0,0};
-//	EEPROM_Write(0, 0, &ee_var, 4);
-//	/*A*/
-//	ds3231_settime(&ti);
-//	ds3231_gettime(&time);
-//
+	//	uint8_t ee_var[] = {0,0,0,0};
+	//	EEPROM_Write(0, 0, &ee_var, 4);
+	//	/*A*/
+	//	ds3231_settime(&ti);
+	//	ds3231_gettime(&time);
+	//
 	ds3231_clearalarm1();
 	ds3231_clearflagalarm1(); /* clear alarm flag */
 	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
 	alarmcheck();
 	/*A*/
-	float prms = 0;
-	uint32_t sample = 0;
 
+	/* eeprom init */
 	static uint8_t adc_cmd32[3] = {0};
 	static uint8_t adc_channel = 0;
 	static uint8_t adc_cs = 0;
@@ -707,164 +580,173 @@ int main(void)
 	while (1)
 	{
 
-	switch(adc_cs)
-	{
-	case R_PH:
-		R_CS(0);
-		break;
-	case Y_PH:
-		Y_CS(0);
-		break;
-	case B_PH:
-		B_CS(0);
-		break;
-	default:
-		R_CS(0);
-	}
-	adc_cmd32[0] = 0x01;
-	adc_cmd32[1] = (adc_channel == 0) ? 0x80 : 0xC0; // Single-ended CH0 or CH1
-	adc_cmd32[2] = 0x00;
-	switch(adc_channel)
-	{
-	case 0:
-		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_volt, 3, 100) == HAL_OK) {
-			// 4. Parse 12-bit result from last 2 bytes
-			// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
-			adc_data_volt_raw[adc_cs] = ((adc_data_volt[1] & 0x0F) << 8) | adc_data_volt[2];
-			adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs] + adc_data_volt_raw[adc_cs];
+		switch(adc_cs)
+		{
+		case R_PH:
+			R_CS(0);
+			break;
+		case Y_PH:
+			Y_CS(0);
+			break;
+		case B_PH:
+			B_CS(0);
+			break;
+		default:
+			R_CS(0);
 		}
-		break;
-	case 1:
-		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_curr, 3, 100) == HAL_OK) {
-			// 4. Parse 12-bit result from last 2 bytes
-			// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
-			adc_data_curr_raw[adc_cs] = ((adc_data_curr[1] & 0x0F) << 8) | adc_data_curr[2];
-			adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs] + adc_data_curr_raw[adc_cs];
+		adc_cmd32[0] = 0x01;
+		adc_cmd32[1] = (adc_channel == 0) ? 0x80 : 0xC0; // Single-ended CH0 or CH1
+		adc_cmd32[2] = 0x00;
+		switch(adc_channel)
+		{
+		case 0:
+			if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_volt, 3, 100) == HAL_OK) {
+				// 4. Parse 12-bit result from last 2 bytes
+				// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
+				adc_data_volt_raw[adc_cs] = ((adc_data_volt[1] & 0x0F) << 8) | adc_data_volt[2];
+				adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs] + adc_data_volt_raw[adc_cs];
+			}
+			break;
+		case 1:
+			if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_curr, 3, 100) == HAL_OK) {
+				// 4. Parse 12-bit result from last 2 bytes
+				// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
+				adc_data_curr_raw[adc_cs] = ((adc_data_curr[1] & 0x0F) << 8) | adc_data_curr[2];
+				adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs] + adc_data_curr_raw[adc_cs];
+			}
+			break;
 		}
-		break;
-	}
-	sample_count++;
-	if(sample_count >= 2000) {
-		adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/1000.0f;
-		adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/1000.0f;
-		adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f)); /* (250.0f/2.5f)) * VOLT_ERR_MULTIPLIER;*/
-		adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f)); /* (25.0f/2.5f)) * CURR_ERR_MULTIPLIER;*/
-		adc_data_volt_avg[adc_cs] = 0;
-		adc_data_curr_avg[adc_cs] = 0;
-		sample_count = 0;
-	}
-	R_CS(1);
-	Y_CS(1);
-	B_CS(1);
-	adc_channel = adc_channel ? 0 : 1;
-	if(adc_channel) /* if volt & curr read, go to next chip */
-		adc_cs = (adc_cs + 1) % 3;
-
-	/* process it, baby */
-
-	if(kwh_update_flag == 1) { /* flag set to 1 on RTC 1 sec interrupt */
-		/* reading ACS37800 */
-		uint32_t kwh_save = 0;
-		static double pow = 0;
-		pow = adc_pv_volt[R_PH] * adc_pv_curr[R_PH] + \
-				adc_pv_volt[Y_PH] * adc_pv_curr[Y_PH] + \
-				adc_pv_volt[B_PH] * adc_pv_curr[B_PH];
-//		EEPROM_Read(0, 0, &kwh_save, 4);
-//		kwh = kwh_save / (float)100;
-		kwh = kwh + (pow * 1/((float)3600 * 1000));
-//		kwh_save = kwh * 100;
-//		EEPROM_Write(0, 0, &kwh_save, 4);
-		ds3231_clearflagalarm1(); /* clear alarm flag */
-		kwh_update_flag = 0;
-	}
-	/* routines */
-
-	/*### Sensor read ###*/
-	/*A*/
-	if(sensor_refresh_flag == 1) {
+		sample_count++;
+		if(sample_count >= 2000) {
+			adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/1000.0f;
+			adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/1000.0f;
+			adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f)); /* (250.0f/2.5f)) * VOLT_ERR_MULTIPLIER;*/
+			adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f)); /* (25.0f/2.5f)) * CURR_ERR_MULTIPLIER;*/
+			adc_data_volt_avg[adc_cs] = 0;
+			adc_data_curr_avg[adc_cs] = 0;
+			sample_count = 0;
+		}
 		R_CS(1);
 		Y_CS(1);
 		B_CS(1);
-		if(sensor_idx == 1) {
-			TS1_CS(0);
-			TS2_CS(1);
+		adc_channel = adc_channel ? 0 : 1;
+		if(adc_channel) /* if volt & curr read, go to next chip */
+			adc_cs = (adc_cs + 1) % 3;
+
+		/* process it, baby */
+
+		if(kwh_update_flag == 1) { /* flag set to 1 on RTC 1 sec interrupt */
+			/* reading ACS37800 */
+			uint32_t kwh_save = 0;
+			static double pow = 0;
+			pow = adc_pv_volt[R_PH] * adc_pv_curr[R_PH] + \
+					adc_pv_volt[Y_PH] * adc_pv_curr[Y_PH] + \
+					adc_pv_volt[B_PH] * adc_pv_curr[B_PH];
+			//		EEPROM_Read(0, 0, &kwh_save, 4);
+			//		kwh = kwh_save / (float)100;
+			kwh = kwh + (pow * 1/((float)3600 * 1000));
+			//		kwh_save = kwh * 100;
+			//		EEPROM_Write(0, 0, &kwh_save, 4);
+			ds3231_clearflagalarm1(); /* clear alarm flag */
+			kwh_update_flag = 0;
 		}
-		else {
+		/* routines */
+
+		/*### Sensor read ###*/
+		/*A*/
+		if(sensor_refresh_flag == 1) {
+			R_CS(1);
+			Y_CS(1);
+			B_CS(1);
+			if(sensor_idx == 1) {
+				TS1_CS(0);
+				TS2_CS(1);
+			}
+			else {
+				TS1_CS(1);
+				TS2_CS(0);
+			}
+			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
+			/* disable CS */
 			TS1_CS(1);
-			TS2_CS(0);
+			TS2_CS(1);
+			temp_state = (((sdo[1] | (sdo[0] << 8)) >> 2) & 0x0001);
+			temp_word = (sdo[1] | sdo[0] << 8);
+			temp12b = (temp_word & 0b111111111111000) >> 3;
+			/* store the temp */
+			if(temp_state == 1) {
+				temperatures[sensor_idx - 1] = -99;
+			}
+			else {
+				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
+			}
+			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
+			sensor_refresh_flag = 0;
 		}
-		HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
-		/* disable CS */
-		TS1_CS(1);
-		TS2_CS(1);
-		temp_state = (((sdo[1] | (sdo[0] << 8)) >> 2) & 0x0001);
-		temp_word = (sdo[1] | sdo[0] << 8);
-		temp12b = (temp_word & 0b111111111111000) >> 3;
-		/* store the temp */
-		if(temp_state == 1) {
-			temperatures[sensor_idx - 1] = -99;
+
+		/* LED for temp */
+		if(temperatures[0] > 60 || temperatures[1] > 60) {
+			LED2(1);
+		} else LED2(0);
+		if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && \
+				(adc_pv_curr[R_PH] <= 0.001f) || \
+				(adc_pv_curr[Y_PH] <= 0.001f) || \
+				(adc_pv_curr[B_PH] <= 0.001f)) {
+			LED1(1);
+		} else LED1(0);
+		if(mode != 0) { /* heater cut-off */
+			/* blink LED2 */
+			LED3(1);
+		} else LED3(0);
+
+		sdo[0] = 0;
+		sdo[1] = 0;
+		temp_word = 0;
+		temp12b = 0;
+		//
+		/*### ON-OFF Control ###*/
+		if(temperatures[0] >= set_point || temperatures[1] >= set_point) {
+			/* Turn TRIAC off */
+			TRIAC1_SET(0);
+			TRIAC2_SET(0);
+			TRIAC3_SET(0);
+			triac_temp_ctrl = 0;
 		}
 		else {
-			temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
+			triac_temp_ctrl = 1;
+			/* Use TRIAC control logic to control output */
 		}
-		sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
-		sensor_refresh_flag = 0;
-	}
 
-	/* LED for temp */
-	if(temperatures[0] > 60 || temperatures[1] > 60) {
-		LED2(1);
-	} else LED2(0);
-	if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && \
-			(adc_pv_curr[R_PH] <= 0.001f) || \
-			(adc_pv_curr[Y_PH] <= 0.001f) || \
-			(adc_pv_curr[B_PH] <= 0.001f)) {
-		LED1(1);
-	} else LED1(0);
-	if(mode != 0) { /* heater cut-off */
-		/* blink LED2 */
-		LED3(1);
-	} else LED3(0);
-
-	sdo[0] = 0;
-	sdo[1] = 0;
-	temp_word = 0;
-	temp12b = 0;
-	//
-	/*### ON-OFF Control ###*/
-	if(temperatures[0] >= set_point || temperatures[1] >= set_point) {
-		/* Turn TRIAC off */
-		TRIAC1_SET(0);
-		TRIAC2_SET(0);
-		TRIAC3_SET(0);
-		triac_temp_ctrl = 0;
-	}
-	else {
-		triac_temp_ctrl = 1;
-		/* Use TRIAC control logic to control output */
-	}
-
-	/*### Selector switch read ###*/
-	if(triac_temp_ctrl == 1) {
-		if(BTN1_READ() == 0) {
+		/*### Selector switch read ###*/
+		if(triac_temp_ctrl == 1) {
 			if(BTN1_READ() == 0) {
-				mode = 1;
-				triac_time = 3.5; /* 130V */
-				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
+				if(BTN1_READ() == 0) {
+					mode = 1;
+					triac_time = 3.5; /* 130V */
+					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
+				}
 			}
-		}
-		else if(BTN2_READ() == 0) {
-			if(BTN2_READ() == 0) {
-				mode = 2;
-				triac_time = 2.4; /* 170V */
-				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
+			else if(BTN2_READ() == 0) {
+				if(BTN2_READ() == 0) {
+					mode = 2;
+					triac_time = 2.4; /* 170V */
+					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
+				}
 			}
-		}
-		else if(BTN3_READ() == 0) {
-			if(BTN3_READ() == 0) {
-				mode = 3;
-				triac_time = 0.1; /* 205V */
-				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
+			else if(BTN3_READ() == 0) {
+				if(BTN3_READ() == 0) {
+					mode = 3;
+					triac_time = 0.1; /* 205V */
+					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
+				}
+			}
+			else {
+				mode = 0;
+				triac_mode = MODE_OFF; /* Never trigger TRIACs */
+				/* keep triacs off */
+				TRIAC1_SET(0);
+				TRIAC2_SET(0);
+				TRIAC3_SET(0);
 			}
 		}
 		else {
@@ -875,15 +757,6 @@ int main(void)
 			TRIAC2_SET(0);
 			TRIAC3_SET(0);
 		}
-	}
-	else {
-		mode = 0;
-		triac_mode = MODE_OFF; /* Never trigger TRIACs */
-		/* keep triacs off */
-		TRIAC1_SET(0);
-		TRIAC2_SET(0);
-		TRIAC3_SET(0);
-	}
 
 		/*A*/
 		/* GSM stuff */
@@ -900,10 +773,10 @@ int main(void)
 					else
 						gsm_cmd_step += 1;
 				}
-//				else if(gsm_status == GSM_NOK) {
-//					gsm_cmd_step = 0;
-//					upload_running = 0; /* cancel upload seq */
-//				}
+				//				else if(gsm_status == GSM_NOK) {
+				//					gsm_cmd_step = 0;
+				//					upload_running = 0; /* cancel upload seq */
+				//				}
 				switch(gsm_cmd_step) {
 				case 0:
 					break;
@@ -980,10 +853,10 @@ int main(void)
 
 		/*########################################################################*/
 	}
-    /* USER CODE END WHILE */
+	/* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
-  /* USER CODE END 3 */
+	/* USER CODE BEGIN 3 */
+	/* USER CODE END 3 */
 }
 
 /**
