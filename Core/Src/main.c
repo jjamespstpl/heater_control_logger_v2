@@ -756,203 +756,116 @@ int main(void)
 
 	/* process it, baby */
 
+	if(kwh_update_flag == 1) { /* flag set to 1 on RTC 1 sec interrupt */
+		/* reading ACS37800 */
+		uint32_t kwh_save = 0;
+		EEPROM_Read(0, 0, &kwh_save, 4);
+		kwh = kwh_save / (float)1000;
+		kwh = kwh + (pavg_final/(float)(1000*60));
+		kwh_save = kwh * 1000;
+		EEPROM_Write(0, 0, &kwh_save, 4);
+		ds3231_clearflagalarm1(); /* clear alarm flag */
+		kwh_update_flag = 0;
+	}
+	/* routines */
+
+	/*### Sensor read ###*/
 	/*A*/
-	/*A*/
-
-		/* update kwh */
-		/*###*/
-//		if(lastime-TIM16->CNT > 20) {
-//			if(triac_mode == MODE_CTRL) {
-//				triac_timer = triac_timer_flag ? triac_timer + 1 : 0;
-//
-//				if(triac_timer >= triac_time * 100) {
-//					/* trigger TRIAC */
-//					triac_timer_flag = 0;
-//					TRIAC1_SET(1); /* trigger TRIAC */
-//					TRIAC2_SET(1);
-//					for(uint16_t i = 0; i < 80; i++);
-//					TRIAC1_SET(0); /* trigger TRIAC */
-//					TRIAC2_SET(0);
-//					// if(triac_trigger_timer > TRIAC_TRIGGER_TIME) {
-//					//   TRIAC1_SET(0); /* trigger delay */
-//					//   TRIAC2_SET(0);
-//					// }
-//				}
-//			} else {
-//				TRIAC1_SET(0); /* trigger TRIAC */
-//				TRIAC2_SET(0);
-//				triac_time = 0;
-//			}
-//		}
-
-		if(kwh_update_flag == 1) {
-			/* reading ACS37800 */
-//			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_PACTAVGONEMIN, I2C_MEMADD_SIZE_8BIT, acs37800_p_buffer, 4, 100);
-//			uint16_t pavg_raw = (acs37800_p_buffer[1] << 8) | acs37800_p_buffer[0];
-//			pavg_final = pavg_raw / (float)32768.0f;
-//			pavg_final = pavg_final * 250 * 30;
-////			float LSBpermW = 3.08; // LSB per mW
-////			LSBpermW  *= 30.0 / ACS37800_CURR_SENS_RANGE; // Correct for sensor version
-////			pavg_final /= LSBpermW; // Convert from codes to mW
-//			//Correct for the voltage divider: (RISO1 + RISO2 + RSENSE) / RSENSE
-//			//Or:  (RISO1 + RISO2 + RISO3 + RISO4 + RSENSE) / RSENSE
-//			pavg_final /= ACS37800_R_RATIO;
-//			pavg_final /= 1000; // Convert from mW to W
-			pavg_final = prms/(float)sample;
-
-			uint32_t kwh_save = 0;
-			EEPROM_Read(0, 0, &kwh_save, 4);
-			kwh = kwh_save / (float)1000;
-			kwh = kwh + (pavg_final/(float)(1000*60));
-			kwh_save = kwh * 1000;
-			EEPROM_Write(0, 0, &kwh_save, 4);
-			sample = 0;
-			prms = 0;
-			ds3231_clearflagalarm1(); /* clear alarm flag */
-			kwh_update_flag = 0;
-		}
-		if(vi_update_flag == 1) {
-			HAL_I2C_Mem_Read(&hi2c1, (ACS37800_I2C_ADDR << 1), ACS37800_REG_VIRMS, I2C_MEMADD_SIZE_8BIT, acs37800_vi_buffer, 4, 100);
-			uint16_t vrms_raw = (acs37800_vi_buffer[1] << 8) | acs37800_vi_buffer[0];
-			vrms_final = vrms_raw / (float)55000;
-			vrms_final = vrms_final * 280;
-			vrms_final = convert_voltage(vrms_final);
-//			if(vrms_final > 250) {
-//				vrms_final = 240 + ((vrms_final - 246)/0.4);
-////				[0.3, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4]
-//			} else if(vrms_final <= 250 && vrms_final > 246) {
-//				vrms_final = 240 + ((vrms_final - 246)/0.4);
-//			} else if(vrms_final <= 246 && vrms_final > 241) {
-//				vrms_final = 230 + ((vrms_final - 241)/0.5);
-//			} else if(vrms_final <= 235 && vrms_final > 241) {
-//				vrms_final = 220 + ((vrms_final - 235)/0.6);
-//			} else if(vrms_final <= 228 && vrms_final > 235) {
-//				vrms_final = 210 + ((vrms_final - 228)/0.7);
-//			} else if(vrms_final <= 220 && vrms_final > 228) {
-//				vrms_final = 200 + ((vrms_final - 220)/0.8);
-//			} else if(vrms_final <= 213 && vrms_final > 220) {
-//				vrms_final = 190 + ((vrms_final - 220)/0.7);
-//			} else {
-//				vrms_final = 180 + ((vrms_final - 210)/0.4);
-//			}
-			uint16_t irms_raw = (acs37800_vi_buffer[3] << 8) | acs37800_vi_buffer[2];
-			irms_final = irms_raw / (float)55000;
-			irms_final = irms_final * ACS37800_CURR_SENS_RANGE;
-			prms += (vrms_final * irms_final);
-			sample++;
-			if(irms_final < 0.050)
-				irms_final = 0;
-			vi_update_flag = 0; /* wait till next sec */
-		}
-		/*###*/
-		/* routines */
-
-		/*### Sensor read ###*/
-		/*A*/
-		if(sensor_refresh_flag == 1) {
-			R_CS(1);
-			Y_CS(1);
-			B_CS(1);
-			if(sensor_idx == 1) {
-				TS1_CS(0);
-				TS2_CS(1);
-			}
-			else {
-				TS1_CS(1);
-				TS2_CS(0);
-			}
-			HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
-			/* disable CS */
-			TS1_CS(1);
+	if(sensor_refresh_flag == 1) {
+		R_CS(1);
+		Y_CS(1);
+		B_CS(1);
+		if(sensor_idx == 1) {
+			TS1_CS(0);
 			TS2_CS(1);
-			temp_state = (((sdo[1] | (sdo[0] << 8)) >> 2) & 0x0001);
-			temp_word = (sdo[1] | sdo[0] << 8);
-			temp12b = (temp_word & 0b111111111111000) >> 3;
-			/* store the temp */
-			if(temp_state == 1) {
-				temperatures[sensor_idx - 1] = -99;
-			}
-			else {
-				temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
-			}
-			sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
-			sensor_refresh_flag = 0;
-		}
-
-		/* LED for temp */
-		if(temperatures[0] > 60 || temperatures[1] > 60) {
-			LED1(1);
-		} else LED1(0);
-		if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && irms_final <= 0.001f) {
-			LED3(1);
-		} else LED3(0);
-		if(triac_temp_ctrl == 0) { /* heater cut-off */
-			/* blink LED2 */
-			led2_blink();
-		} else led2_off();
-		//	/* read two sensors, average it if both are working */
-		//	if(temperatures[0] != -99 && temperatures[1] != -99) {
-		//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
-		//		active_sensor_idx = 2;
-		//	}
-		//	else if(temperatures[0] != -99 && temperatures[1] == -99) {
-		//		active_sensor_idx = 0;
-		//	}
-		//	else if(temperatures[0] == -99 && temperatures[1] != -99) {
-		//		active_sensor_idx = 1;
-		//	}
-		//	else {
-		//		temperatures[2] = -99;
-		//		active_sensor_idx = 2;
-		//	}
-		sdo[0] = 0;
-		sdo[1] = 0;
-		temp_word = 0;
-		temp12b = 0;
-		//
-		/*### ON-OFF Control ###*/
-		if(temperatures[0] >= set_point || temperatures[1] >= set_point) {
-			/* Turn TRIAC off */
-			TRIAC1_SET(0);
-			TRIAC2_SET(0);
-			TRIAC3_SET(0);
-			triac_temp_ctrl = 0;
 		}
 		else {
-			triac_temp_ctrl = 1;
-			/* Use TRIAC control logic to control output */
+			TS1_CS(1);
+			TS2_CS(0);
 		}
+		HAL_SPI_Receive(&hspi2, (uint8_t *)sdo, 2, 10);
+		/* disable CS */
+		TS1_CS(1);
+		TS2_CS(1);
+		temp_state = (((sdo[1] | (sdo[0] << 8)) >> 2) & 0x0001);
+		temp_word = (sdo[1] | sdo[0] << 8);
+		temp12b = (temp_word & 0b111111111111000) >> 3;
+		/* store the temp */
+		if(temp_state == 1) {
+			temperatures[sensor_idx - 1] = -99;
+		}
+		else {
+			temperatures[sensor_idx - 1] = (float)(temp12b*0.25);
+		}
+		sensor_idx = sensor_idx >= SENSOR_COUNT ? 1 : sensor_idx + 1;
+		sensor_refresh_flag = 0;
+	}
 
-		/*### Selector switch read ###*/
-		if(triac_temp_ctrl == 1) {
+	/* LED for temp */
+	if(temperatures[0] > 60 || temperatures[1] > 60) {
+		LED1(1);
+	} else LED1(0);
+	if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && irms_final <= 0.001f) {
+		LED3(1);
+	} else LED3(0);
+	if(triac_temp_ctrl == 0) { /* heater cut-off */
+		/* blink LED2 */
+		led2_blink();
+	} else led2_off();
+	//	/* read two sensors, average it if both are working */
+	//	if(temperatures[0] != -99 && temperatures[1] != -99) {
+	//		temperatures[2] = (temperatures[0] + temperatures[1])/2;
+	//		active_sensor_idx = 2;
+	//	}
+	//	else if(temperatures[0] != -99 && temperatures[1] == -99) {
+	//		active_sensor_idx = 0;
+	//	}
+	//	else if(temperatures[0] == -99 && temperatures[1] != -99) {
+	//		active_sensor_idx = 1;
+	//	}
+	//	else {
+	//		temperatures[2] = -99;
+	//		active_sensor_idx = 2;
+	//	}
+	sdo[0] = 0;
+	sdo[1] = 0;
+	temp_word = 0;
+	temp12b = 0;
+	//
+	/*### ON-OFF Control ###*/
+	if(temperatures[0] >= set_point || temperatures[1] >= set_point) {
+		/* Turn TRIAC off */
+		TRIAC1_SET(0);
+		TRIAC2_SET(0);
+		TRIAC3_SET(0);
+		triac_temp_ctrl = 0;
+	}
+	else {
+		triac_temp_ctrl = 1;
+		/* Use TRIAC control logic to control output */
+	}
+
+	/*### Selector switch read ###*/
+	if(triac_temp_ctrl == 1) {
+		if(BTN1_READ() == 0) {
 			if(BTN1_READ() == 0) {
-				if(BTN1_READ() == 0) {
-					mode = 1;
-					triac_time = 4.5; /* 130V */
-					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
-				}
+				mode = 1;
+				triac_time = 4.5; /* 130V */
+				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 			}
-			else if(BTN2_READ() == 0) {
-				if(BTN2_READ() == 0) {
-					mode = 2;
-					triac_time = 3.37; /* 170V */
-					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
-				}
+		}
+		else if(BTN2_READ() == 0) {
+			if(BTN2_READ() == 0) {
+				mode = 2;
+				triac_time = 3.37; /* 170V */
+				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 			}
-			else if(BTN3_READ() == 0) {
-				if(BTN3_READ() == 0) {
-					mode = 3;
-					triac_time = 2.4; /* 205V */
-					triac_mode = MODE_CTRL; /* Never trigger TRIACs */
-				}
-			}
-			else {
-				mode = 0;
-				triac_mode = MODE_OFF; /* Never trigger TRIACs */
-				/* keep triacs off */
-				TRIAC1_SET(0);
-				TRIAC2_SET(0);
-				TRIAC3_SET(0);
+		}
+		else if(BTN3_READ() == 0) {
+			if(BTN3_READ() == 0) {
+				mode = 3;
+				triac_time = 2.4; /* 205V */
+				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 			}
 		}
 		else {
@@ -963,6 +876,15 @@ int main(void)
 			TRIAC2_SET(0);
 			TRIAC3_SET(0);
 		}
+	}
+	else {
+		mode = 0;
+		triac_mode = MODE_OFF; /* Never trigger TRIACs */
+		/* keep triacs off */
+		TRIAC1_SET(0);
+		TRIAC2_SET(0);
+		TRIAC3_SET(0);
+	}
 
 		/*A*/
 		/* GSM stuff */
