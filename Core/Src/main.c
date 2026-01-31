@@ -273,10 +273,11 @@ void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin) {
 	if(pin == GPIO_PIN_6) {
 		/* RTC interrupt */
 		/*###*/
-		kwh_update_flag = 1;
+//		kwh_update_flag = 1;
 		/*###*/
 	}
 }
+
 
 
 float temperatures[SENSOR_COUNT + 1];
@@ -356,6 +357,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 			} else sec++;
 			ms = 0;
 			vi_update_flag = 1;
+			kwh_update_flag = 1;
 			/*###*/
 		} else ms++;
 
@@ -683,11 +685,10 @@ int main(void)
 //	ds3231_settime(&ti);
 //	ds3231_gettime(&time);
 //
-//	ds3231_clearalarm1();
-//	//DS3231_SetAlarm1(ALARM_MODE_ONCE_PER_SECOND, 0, 0, 0, 0);
-//	ds3231_clearflagalarm1(); /* clear alarm flag */
-//	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
-//	alarmcheck();
+	ds3231_clearalarm1();
+	ds3231_clearflagalarm1(); /* clear alarm flag */
+	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
+	alarmcheck();
 	/*A*/
 	float prms = 0;
 	uint32_t sample = 0;
@@ -764,9 +765,9 @@ int main(void)
 				adc_pv_volt[Y_PH] * adc_pv_curr[Y_PH] + \
 				adc_pv_volt[B_PH] * adc_pv_curr[B_PH];
 //		EEPROM_Read(0, 0, &kwh_save, 4);
-		kwh = kwh_save / (float)100;
-		kwh = kwh + (pow * 1/(float)3600);
-		kwh_save = kwh * 100;
+//		kwh = kwh_save / (float)100;
+		kwh = kwh + (pow * 1/((float)3600 * 1000));
+//		kwh_save = kwh * 100;
 //		EEPROM_Write(0, 0, &kwh_save, 4);
 		ds3231_clearflagalarm1(); /* clear alarm flag */
 		kwh_update_flag = 0;
