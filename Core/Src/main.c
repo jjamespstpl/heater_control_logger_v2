@@ -63,6 +63,8 @@ uint16_t pavg;
 float vrms_final = 0;
 float irms_final = 0;
 float pavg_final = 0;
+const float CURR_ERR_MULTIPLIER = 1;
+const float VOLT_ERR_MULTIPLIER = 1;
 /*###*/
 /* USER CODE END PD */
 
@@ -745,8 +747,8 @@ int main(void)
 	if(sample_count >= 1000) {
 		adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/500.0f;
 		adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/500.0f;
-		adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f) * (250.0f/2.5f));
-		adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f) * (25.0f/2.5f));
+		adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f) * (250.0f/2.5f)) * VOLT_ERR_MULTIPLIER;
+		adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f) * (25.0f/2.5f)) * CURR_ERR_MULTIPLIER;
 		adc_data_volt_avg[adc_cs] = 0;
 		adc_data_curr_avg[adc_cs] = 0;
 		sample_count = 0;
@@ -813,7 +815,10 @@ int main(void)
 	if(temperatures[0] > 60 || temperatures[1] > 60) {
 		LED1(1);
 	} else LED1(0);
-	if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && irms_final <= 0.001f) {
+	if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && \
+			(adc_pv_curr[R_PH] <= 0.001f) || \
+			(adc_pv_curr[Y_PH] <= 0.001f) || \
+			(adc_pv_curr[B_PH] <= 0.001f)) {
 		LED3(1);
 	} else LED3(0);
 	if(triac_temp_ctrl == 0) { /* heater cut-off */
