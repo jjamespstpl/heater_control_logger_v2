@@ -744,11 +744,11 @@ int main(void)
 		break;
 	}
 	sample_count++;
-	if(sample_count >= 1000) {
-		adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/500.0f;
-		adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/500.0f;
-		adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f) * (250.0f/2.5f)) * VOLT_ERR_MULTIPLIER;
-		adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f) * (25.0f/2.5f)) * CURR_ERR_MULTIPLIER;
+	if(sample_count >= 2000) {
+		adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/1000.0f;
+		adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/1000.0f;
+		adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f)); /* (250.0f/2.5f)) * VOLT_ERR_MULTIPLIER;*/
+		adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f)); /* (25.0f/2.5f)) * CURR_ERR_MULTIPLIER;*/
 		adc_data_volt_avg[adc_cs] = 0;
 		adc_data_curr_avg[adc_cs] = 0;
 		sample_count = 0;
