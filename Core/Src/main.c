@@ -858,21 +858,21 @@ int main(void)
 		if(BTN1_READ() == 0) {
 			if(BTN1_READ() == 0) {
 				mode = 1;
-				triac_time = 4.5; /* 130V */
+				triac_time = 3.5; /* 130V */
 				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 			}
 		}
 		else if(BTN2_READ() == 0) {
 			if(BTN2_READ() == 0) {
 				mode = 2;
-				triac_time = 3.37; /* 170V */
+				triac_time = 2.4; /* 170V */
 				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 			}
 		}
 		else if(BTN3_READ() == 0) {
 			if(BTN3_READ() == 0) {
 				mode = 3;
-				triac_time = 2.4; /* 205V */
+				triac_time = 0.1; /* 205V */
 				triac_mode = MODE_CTRL; /* Never trigger TRIACs */
 			}
 		}
