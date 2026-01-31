@@ -813,18 +813,18 @@ int main(void)
 
 	/* LED for temp */
 	if(temperatures[0] > 60 || temperatures[1] > 60) {
-		LED1(1);
-	} else LED1(0);
+		LED2(1);
+	} else LED2(0);
 	if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && \
 			(adc_pv_curr[R_PH] <= 0.001f) || \
 			(adc_pv_curr[Y_PH] <= 0.001f) || \
 			(adc_pv_curr[B_PH] <= 0.001f)) {
-		LED3(1);
-	} else LED3(0);
+		LED1(1);
+	} else LED1(0);
 	if(mode != 0) { /* heater cut-off */
 		/* blink LED2 */
-		LED2(1);
-	} else LED2(0);
+		LED3(1);
+	} else LED3(0);
 
 	sdo[0] = 0;
 	sdo[1] = 0;
