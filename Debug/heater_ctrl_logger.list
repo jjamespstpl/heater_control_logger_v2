@@ -8596,8 +8596,8 @@ int main(void)
 		break;
  80041f4:	e032      	b.n	800425c <main+0x320>
 	case 1:
-		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_volt, 3, 100) == HAL_OK) {
- 80041f6:	4a29      	ldr	r2, [pc, #164]	@ (800429c <main+0x360>)
+		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_curr, 3, 100) == HAL_OK) {
+ 80041f6:	4a2d      	ldr	r2, [pc, #180]	@ (80042ac <main+0x370>)
  80041f8:	4926      	ldr	r1, [pc, #152]	@ (8004294 <main+0x358>)
  80041fa:	4829      	ldr	r0, [pc, #164]	@ (80042a0 <main+0x364>)
  80041fc:	2364      	movs	r3, #100	@ 0x64

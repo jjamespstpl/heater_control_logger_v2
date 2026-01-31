@@ -729,7 +729,7 @@ int main(void)
 		}
 		break;
 	case 1:
-		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_volt, 3, 100) == HAL_OK) {
+		if (HAL_SPI_TransmitReceive(&hspi2, adc_cmd32, adc_data_curr, 3, 100) == HAL_OK) {
 			// 4. Parse 12-bit result from last 2 bytes
 			// Data format: Byte1 (ignored), Byte2 (lower 4 bits are ADC bit 11-8), Byte3 (ADC bit 7-0)
 			adc_data_curr_raw[adc_cs] = ((adc_data_curr[1] & 0x0F) << 8) | adc_data_curr[2];
