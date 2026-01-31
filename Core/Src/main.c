@@ -194,7 +194,7 @@ float adc_arr[ADC_CHANNEL_COUNT];
 float adc_conv_fact[ADC_CHANNEL_COUNT] = { 0.108675, 0.001932, 0 }; /* TODO add current and temp values */
 uint16_t adc_raw[ADC_CHANNEL_COUNT];
 
-float kwh;
+double kwh;
 
 typedef enum adc_params {
 	VOLT,
@@ -474,7 +474,7 @@ void EEPROM_Write(uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
 	}
 }
 //
-void EEPROM_Read (uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
+void EEPROM_Read(uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
 {
 	int paddrposition = log(PAGE_SIZE)/log(2);
 
@@ -759,11 +759,15 @@ int main(void)
 	if(kwh_update_flag == 1) { /* flag set to 1 on RTC 1 sec interrupt */
 		/* reading ACS37800 */
 		uint32_t kwh_save = 0;
-		EEPROM_Read(0, 0, &kwh_save, 4);
-		kwh = kwh_save / (float)1000;
-		kwh = kwh + (pavg_final/(float)(1000*60));
-		kwh_save = kwh * 1000;
-		EEPROM_Write(0, 0, &kwh_save, 4);
+		static double pow = 0;
+		pow = adc_pv_volt[R_PH] * adc_pv_curr[R_PH] + \
+				adc_pv_volt[Y_PH] * adc_pv_curr[Y_PH] + \
+				adc_pv_volt[B_PH] * adc_pv_curr[B_PH];
+//		EEPROM_Read(0, 0, &kwh_save, 4);
+		kwh = kwh_save / (float)100;
+		kwh = kwh + (pow * 1/(float)3600);
+		kwh_save = kwh * 100;
+//		EEPROM_Write(0, 0, &kwh_save, 4);
 		ds3231_clearflagalarm1(); /* clear alarm flag */
 		kwh_update_flag = 0;
 	}
