@@ -39,7 +39,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart.h \
  ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal_uart_ex.h \
  ../Core/Inc/temp.h ../Core/Inc/main.h ../Core/Inc/ds3231.h \
- ../Core/Src/../../ECUAL/I2C_LCD/I2C_LCD.h
+ ../Core/Inc/e24.h ../Core/Src/../../ECUAL/I2C_LCD/I2C_LCD.h
 ../Core/Inc/main.h:
 ../Drivers/STM32G0xx_HAL_Driver/Inc/stm32g0xx_hal.h:
 ../Core/Inc/stm32g0xx_hal_conf.h:
@@ -83,4 +83,5 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/temp.h:
 ../Core/Inc/main.h:
 ../Core/Inc/ds3231.h:
+../Core/Inc/e24.h:
 ../Core/Src/../../ECUAL/I2C_LCD/I2C_LCD.h:

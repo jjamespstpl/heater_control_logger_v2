@@ -44,6 +44,8 @@
 #define GSM_WAIT_TIME_MED		10000
 #define GSM_WAIT_TIME_HIGH		20000
 
+#define TIME_READ()				() /* TODO configure time setting buttom */
+
 #define MODE_OFF	0x00
 #define MODE_ON		0x01
 #define MODE_CTRL	0x02
@@ -297,12 +299,23 @@ volatile uint16_t gsm_rx_timer, gsm_rx_timeout;
 uint8_t gsm_cmd_step;
 volatile uint8_t gsm_rx_flag;
 #define GSM_RX_BUFFER_SIZE	100
+#define RX_BUFFER_SIZE		512
 uint8_t gsm_tx_buffer[300];
 char gsm_rx_buffer[GSM_RX_BUFFER_SIZE];
 char gsm_match_resp[20];
 
+static uint8_t rx_byte;
+static uint8_t rx_index;
+static uint8_t rx_timeout;
+uint8_t time_flag;
+//static uint8_t rx_buffer[RX_BUFFER_SIZE] = {0};
+static char rx_buffer[RX_BUFFER_SIZE] = {0};
+
 uint8_t upload_running = 0;
 uint8_t upload_flag = 0;
+uint8_t time_isr_flg = 0;
+uint16_t reset_flag = 0;
+
 
 uint32_t lastime;
 
@@ -333,6 +346,23 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 		memset(gsm_rx_buffer, 0, GSM_RX_BUFFER_SIZE);
 		HAL_UART_Receive_DMA(huart, gsm_rx_buffer, GSM_RX_BUFFER_SIZE);
 		gsm_rx_flag = 1;
+	}
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if(huart->Instance == USART3) {
+		if (rx_index < RX_BUFFER_SIZE - 1) {
+		    rx_buffer[rx_index++] = rx_byte;
+		} else {
+		    rx_index = 0;   // or stop reception
+		}
+		reset_flag++;
+		if(rx_timeout == 0){
+			HAL_UART_Receive_IT(huart, &rx_byte, 1);
+		}
+		if(rx_index > 38) {
+			time_isr_flg = 1;
+		}
 	}
 }
 
@@ -564,10 +594,10 @@ int main(void)
 	//	ds3231_settime(&ti);
 	//	ds3231_gettime(&time);
 	//
-	ds3231_clearalarm1();
-	ds3231_clearflagalarm1(); /* clear alarm flag */
-	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
-	alarmcheck();
+//	ds3231_clearalarm1();
+//	ds3231_clearflagalarm1(); /* clear alarm flag */
+//	ds3231_setalarm1(ALARM_MODE_SEC_MATCHED, 0, 0, 0, 10);
+//	alarmcheck();
 	/*A*/
 
 	/* eeprom init */
@@ -577,6 +607,12 @@ int main(void)
 
 	static uint32_t sample_count = 0;
 
+	uint8_t status = 0;
+	uint8_t data_write = 21;
+	uint8_t data_read = 0;
+	status = EE24_Init(&ee, EEPROM_I2C, EEPROM_ADDR);
+	status = EE24_Write(&ee, 12, &data_write, 1, HAL_MAX_DELAY);
+	status = EE24_Read(&ee, 12, &data_read, 1, HAL_MAX_DELAY);
 	while (1)
 	{
 
@@ -617,11 +653,11 @@ int main(void)
 			break;
 		}
 		sample_count++;
-		if(sample_count >= 2000) {
-			adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/1000.0f;
-			adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/1000.0f;
-			adc_pv_volt[adc_cs] = (float)(adc_data_volt_avg[adc_cs] * (3.33f/4095.0f)); /* (250.0f/2.5f)) * VOLT_ERR_MULTIPLIER;*/
-			adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f)); /* (25.0f/2.5f)) * CURR_ERR_MULTIPLIER;*/
+		if(sample_count >= 5000) {
+			adc_data_volt_avg[adc_cs] = adc_data_volt_avg[adc_cs]/2500.0f;
+			adc_data_curr_avg[adc_cs] = adc_data_curr_avg[adc_cs]/2500.0f;
+			adc_pv_volt[adc_cs] = (float)((adc_data_volt_avg[adc_cs] * (3.33f/4095.0f)) - 0.01) * (250.0f/2.5f) * VOLT_ERR_MULTIPLIER;
+			adc_pv_curr[adc_cs] = (float)(adc_data_curr_avg[adc_cs] * (3.33f/4095.0f)) * (25.0f/2.5f) * CURR_ERR_MULTIPLIER;
 			adc_data_volt_avg[adc_cs] = 0;
 			adc_data_curr_avg[adc_cs] = 0;
 			sample_count = 0;
@@ -642,14 +678,64 @@ int main(void)
 			pow = adc_pv_volt[R_PH] * adc_pv_curr[R_PH] + \
 					adc_pv_volt[Y_PH] * adc_pv_curr[Y_PH] + \
 					adc_pv_volt[B_PH] * adc_pv_curr[B_PH];
-			//		EEPROM_Read(0, 0, &kwh_save, 4);
-			//		kwh = kwh_save / (float)100;
-			kwh = kwh + (pow * 1/((float)3600 * 1000));
-			//		kwh_save = kwh * 100;
-			//		EEPROM_Write(0, 0, &kwh_save, 4);
+			EEPROM_Read(0, 0, &kwh_save, 4);
+			kwh = kwh_save + (pow * 1/((float)3600 * 1000));
+			EEPROM_Write(0, 0, &kwh, 4);
 			ds3231_clearflagalarm1(); /* clear alarm flag */
 			kwh_update_flag = 0;
 		}
+		/* read time from RTC */
+		if(TIME_READ() == 0) { /* read the time-setting button */
+			if(time_flag == 0) {
+				time_flag++ ;
+			}
+			if(time_flag == 2) {
+				if(gsm_cmd_step == 0){
+					rx_index = 0;
+					time_isr_flg = 0 ;
+					gsm_cmd("AT+CCLK?","OK ", GSM_WAIT_TIME_HIGH);
+					char network_time[512];
+					while(time_isr_flg == 0){
+						/* wait till */
+					}
+					memcpy(network_time, rx_buffer, sizeof(rx_buffer)) ;
+
+					char *cclk = "CCLK";
+					char *time_start ;
+					time_start = strstr(network_time, cclk) ;
+					char time_str[32] ;
+					memcpy(time_str, time_start,30);
+					time_str[28] = '\0';
+
+					int yy, MM, dd, hh, mm, ss, tz;
+
+					DateTime now ,UTC ;
+
+					uint8_t ret=sscanf(time_str,
+							"CCLK: \"%2d/%2d/%2d,%2d:%2d:%2d%3d\"",
+							&yy, &MM, &dd,
+							&hh, &mm, &ss,
+							&tz);
+
+					if (ret == 7) {
+						// parsing failed
+						now.sec=ss ;
+						now.min=mm ;
+						now.hr=hh ;
+						now.dow=1 ;
+						now.day=dd ;
+						now.month=MM ;
+						now.year= yy  ;
+					}
+
+					IST_To_UTC(now, &UTC);
+					ds3231_settime(&UTC);
+					HAL_Delay(500);
+				}
+			}
+		}
+
+
 		/* routines */
 
 		/*### Sensor read ###*/
@@ -689,9 +775,9 @@ int main(void)
 			LED2(1);
 		} else LED2(0);
 		if(triac_mode == MODE_CTRL && triac_temp_ctrl == 1 && \
-				(adc_pv_curr[R_PH] <= 0.001f) || \
-				(adc_pv_curr[Y_PH] <= 0.001f) || \
-				(adc_pv_curr[B_PH] <= 0.001f)) {
+				(adc_pv_curr[R_PH] <= 0.01f) || \
+				(adc_pv_curr[Y_PH] <= 0.01f) || \
+				(adc_pv_curr[B_PH] <= 0.01f)) {
 			LED1(1);
 		} else LED1(0);
 		if(mode != 0) { /* heater cut-off */
@@ -851,6 +937,19 @@ int main(void)
 			}
 		} else upload_flag = 0;
 
+		if(TIME_READ() == 0) {
+			if(time_flag == 1) {
+				time_flag = 2;
+			}
+		}
+
+		if((min % 6 == 0)  && (min >0 )){
+			if(reset_flag > 1) {
+				reset_flag=0 ;
+				min++ ;
+			}
+			else HAL_NVIC_SystemReset();
+		}
 		/*########################################################################*/
 	}
 	/* USER CODE END WHILE */
